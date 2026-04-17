@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.uv/
+.ipynb_checkpoints/
+.DS_Store
+log/
+Fig/*.png
+Fig/*.pdf
+!Fig/.gitkeep
+*.pt
+*.ckpt
+.vscode/
+.idea/
