@@ -86,6 +86,26 @@ def run(cfg_path: Path, log_dir: Path):
         log_gate=(cfg["fusion"] == "gated"),
     )
 
+    # --- Ablation: gated fusion + sigmoid head (isolates the fusion contribution
+    # under the previous group's output head; see Decisions log 2026-04-17).
+    if cfg.get("run_gated_sigmoid_ablation", True):
+        gated_sigmoid = CFGatedOrdinal(
+            n_users=meta.n_users,
+            n_items=meta.n_items,
+            user_feat_dim=meta.user_feat_dim,
+            item_feat_dim=meta.item_feat_dim,
+            embed_dim=cfg["embed_dim"],
+            fusion="gated",
+            head="sigmoid",
+        )
+        results["gated_sigmoid"] = train_model(
+            gated_sigmoid, train_ds, test_ds, tcfg,
+            user_features=meta.user_features,
+            item_features=meta.item_features,
+            use_features=True,
+            log_gate=True,
+        )
+
     out = log_dir / "results.json"
     with out.open("w") as f:
         json.dump({k: _serialize(v) for k, v in results.items()}, f, indent=2)

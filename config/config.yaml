@@ -26,3 +26,8 @@ patience_ablation: 10
 # Proposed model toggles (for ablation)
 fusion: gated         # {none, additive, gated}
 head: ordinal         # {sigmoid, ordinal}
+
+# Always-on companion ablation: same fusion=gated but with the previous group's sigmoid head.
+# Set false for single-model runs; true for headline reporting so the main table shows
+# that our fusion mechanism alone improves RMSE under the baseline output head.
+run_gated_sigmoid_ablation: true

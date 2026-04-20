@@ -51,7 +51,7 @@ Goal: three algorithmic changes end-to-end, training stable.
   - [x] NMF: replace ReLU-in-forward with weight-projection step after `opt.step()` (2026-04-17, smoke-checked: embeddings min=0, max=0.49)
   - [x] Patience: `protocol: headline|ablation` switch in config, resolves to `patience_headline=30` or `patience_ablation=10` (2026-04-17)
   - [x] Reporting: RMSE, MAE, accuracy, NLL everywhere — `evaluate()` computes NLL when model emits `probs`; `main.py` prints all four; `scripts/render_results.py` PNG/md show NLL column (2026-04-17)
-  - [ ] Add `fusion=gated, head=sigmoid` ablation row
+  - [x] Add `fusion=gated, head=sigmoid` ablation row (2026-04-20, toggled via `run_gated_sigmoid_ablation: true`; smoke-tested gate init ~0.5, pred range 3.18–3.42)
   - [x] Initialise ordinal thresholds from empirical rating quantiles (2026-04-20, verified: predicted P(r=k) at s=0 matches empirical to 1e-7)
   - [x] Exclude ordinal thresholds from weight decay (2026-04-20, Adam param groups: 12 decay, 2 no-decay for theta1+deltas)
 - [ ] Verify ordinal head invariants: `Σ P(r=k) = 1`, thresholds monotone, gradients non-zero
