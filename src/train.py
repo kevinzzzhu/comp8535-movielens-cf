@@ -27,14 +27,20 @@ def set_seed(seed: int) -> None:
 
 
 def evaluate(model, loader, user_features, item_features, device: str, use_features: bool):
+    """Return RMSE, MAE, rounded-prediction accuracy, and NLL when the model exposes class probs."""
     model.eval()
-    preds, targets = [], []
+    preds, targets, nll_sum, nll_n = [], [], 0.0, 0
     with torch.no_grad():
         for u, i, r in loader:
             u, i, r = u.to(device), i.to(device), r.to(device)
             if use_features:
                 out = model(u, i, user_features, item_features)
                 p = out["pred"]
+                if "probs" in out:
+                    cls = (r.round().long() - 1).clamp(0, 4)
+                    log_p = torch.log(out["probs"] + 1e-12)
+                    nll_sum += float(-log_p.gather(-1, cls.unsqueeze(-1)).sum())
+                    nll_n += r.shape[0]
             else:
                 p = model(u, i)
             preds.append(p.cpu())
@@ -45,7 +51,10 @@ def evaluate(model, loader, user_features, item_features, device: str, use_featu
     mae = float((preds - targets).abs().mean())
     rounded = preds.round().clamp(1, 5)
     acc = float((rounded == targets).float().mean())
-    return {"rmse": rmse, "mae": mae, "acc": acc}
+    metrics = {"rmse": rmse, "mae": mae, "acc": acc}
+    if nll_n > 0:
+        metrics["nll"] = nll_sum / nll_n
+    return metrics
 
 
 def train_model(

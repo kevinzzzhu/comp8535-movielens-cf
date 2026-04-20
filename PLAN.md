@@ -50,7 +50,7 @@ Goal: three algorithmic changes end-to-end, training stable.
 - [ ] **Apply decisions log fixes** (from 2026-04-17 run):
   - [x] NMF: replace ReLU-in-forward with weight-projection step after `opt.step()` (2026-04-17, smoke-checked: embeddings min=0, max=0.49)
   - [x] Patience: `protocol: headline|ablation` switch in config, resolves to `patience_headline=30` or `patience_ablation=10` (2026-04-17)
-  - [ ] Reporting: print MAE, accuracy, NLL alongside RMSE in `main.py`
+  - [x] Reporting: RMSE, MAE, accuracy, NLL everywhere — `evaluate()` computes NLL when model emits `probs`; `main.py` prints all four; `scripts/render_results.py` PNG/md show NLL column (2026-04-17)
   - [ ] Add `fusion=gated, head=sigmoid` ablation row
   - [ ] Initialise ordinal thresholds from empirical rating quantiles
   - [ ] Exclude ordinal thresholds from weight decay

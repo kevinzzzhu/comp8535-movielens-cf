@@ -51,8 +51,13 @@ def run(cfg_path: Path, log_dir: Path):
     u = test_ds.user_idx.numpy()
     i = test_ds.item_idx.numpy()
     r = test_ds.rating.numpy()
-    rmse = float(np.sqrt(np.mean((pred_fn(u, i) - r) ** 2)))
-    results["svd"] = {"rmse": rmse}
+    svd_pred = pred_fn(u, i)
+    svd_rounded = np.clip(np.round(svd_pred), 1.0, 5.0)
+    results["svd"] = {
+        "rmse": float(np.sqrt(np.mean((svd_pred - r) ** 2))),
+        "mae": float(np.mean(np.abs(svd_pred - r))),
+        "acc": float(np.mean(svd_rounded == r)),
+    }
 
     # --- MF
     mf = MFBias(meta.n_users, meta.n_items, embed_dim=cfg["embed_dim"], non_negative=False)
@@ -84,9 +89,14 @@ def run(cfg_path: Path, log_dir: Path):
     with out.open("w") as f:
         json.dump({k: _serialize(v) for k, v in results.items()}, f, indent=2)
     print(f"Wrote {out}")
+    print(f"  {'model':<12} {'RMSE':>8} {'MAE':>8} {'Acc':>8} {'NLL':>8}")
     for k, v in results.items():
+        last = v.get("history", [{}])[-1] if "history" in v else v
         rmse = v.get("best_rmse", v.get("rmse"))
-        print(f"  {k:10s}  RMSE = {rmse:.4f}")
+        mae = last.get("mae", float("nan"))
+        acc = last.get("acc", float("nan"))
+        nll = last.get("nll", float("nan"))
+        print(f"  {k:<12} {rmse:>8.4f} {mae:>8.4f} {acc:>8.4f} {nll:>8.4f}")
 
 
 def _serialize(x):
