@@ -76,6 +76,7 @@ def run(cfg_path: Path, log_dir: Path):
         embed_dim=cfg["embed_dim"],
         fusion=cfg["fusion"],
         head=cfg["head"],
+        train_ratings=train_ds.rating if cfg["head"] == "ordinal" else None,
     )
     results["proposed"] = train_model(
         proposed, train_ds, test_ds, tcfg,

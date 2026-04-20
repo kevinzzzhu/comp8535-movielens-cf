@@ -39,13 +39,42 @@ class AdditiveFusion(nn.Module):
 
 
 class OrdinalHead(nn.Module):
-    """Cumulative-link ordinal head with monotone thresholds via softplus."""
+    """Cumulative-link ordinal head with monotone thresholds via softplus.
 
-    def __init__(self, n_classes: int = 5):
+    Thresholds are stored as (theta1, deltas) where deltas are mapped through softplus to
+    enforce theta_k < theta_{k+1}. Default initialisation places all thresholds at -2,
+    which puts most probability mass on class 1 at init — poor gradient flow early. Passing
+    `train_ratings` initialises the thresholds from the empirical rating distribution so that
+    at s=0 the predicted marginal matches the data.
+    """
+
+    def __init__(self, n_classes: int = 5, train_ratings: torch.Tensor | None = None):
         super().__init__()
         self.n_classes = n_classes
-        self.theta1 = nn.Parameter(torch.tensor(-2.0))
-        self.deltas = nn.Parameter(torch.zeros(n_classes - 2))  # softplus -> positive gaps
+        if train_ratings is not None:
+            theta1, deltas = self._thresholds_from_ratings(train_ratings, n_classes)
+            self.theta1 = nn.Parameter(theta1)
+            self.deltas = nn.Parameter(deltas)
+        else:
+            self.theta1 = nn.Parameter(torch.tensor(-2.0))
+            self.deltas = nn.Parameter(torch.zeros(n_classes - 2))
+
+    @staticmethod
+    def _thresholds_from_ratings(ratings: torch.Tensor, n_classes: int) -> tuple[torch.Tensor, torch.Tensor]:
+        """Derive (theta1, deltas_pre_softplus) so sigmoid(theta_k - 0) matches P(r<=k)."""
+        cls = (ratings.round().long() - 1).clamp(0, n_classes - 1)
+        counts = torch.bincount(cls, minlength=n_classes).float()
+        probs = counts / counts.sum()
+        cum = torch.cumsum(probs, dim=0)[:-1]              # P(r<=k) for k=1..K-1
+        eps = 1e-3
+        cum = cum.clamp(eps, 1.0 - eps)
+        thr = torch.logit(cum)                              # theta_k = logit(P(r<=k))
+        theta1 = thr[0].detach().clone()
+        gaps = (thr[1:] - thr[:-1]).clamp(min=1e-3)         # strictly positive gaps
+        # invert softplus: deltas_raw such that softplus(deltas_raw) = gaps
+        # softplus(x) = log(1 + exp(x)); inverse: log(exp(gap) - 1)
+        deltas = torch.log(torch.expm1(gaps)).detach().clone()
+        return theta1, deltas
 
     def thresholds(self) -> torch.Tensor:
         gaps = F.softplus(self.deltas)
@@ -79,6 +108,7 @@ class CFGatedOrdinal(nn.Module):
         fusion: str = "gated",  # {"none", "additive", "gated"}
         head: str = "ordinal",  # {"sigmoid", "ordinal"}
         n_classes: int = 5,
+        train_ratings: torch.Tensor | None = None,
     ):
         super().__init__()
         self.fusion_kind = fusion
@@ -106,7 +136,7 @@ class CFGatedOrdinal(nn.Module):
             raise ValueError(f"unknown fusion: {fusion}")
 
         if head == "ordinal":
-            self.head = OrdinalHead(n_classes=n_classes)
+            self.head = OrdinalHead(n_classes=n_classes, train_ratings=train_ratings)
         elif head != "sigmoid":
             raise ValueError(f"unknown head: {head}")
 
