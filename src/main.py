@@ -29,15 +29,20 @@ def run(cfg_path: Path, log_dir: Path):
     meta = build_metadata(data_dir)
     train_ds, test_ds = load_split(data_dir, split=cfg["split"])
 
+    protocol = cfg.get("protocol", "headline")
+    patience_key = f"patience_{protocol}"
+    if patience_key not in cfg:
+        raise KeyError(f"config missing {patience_key} for protocol={protocol!r}")
     tcfg = TrainConfig(
         epochs=cfg["epochs"],
         batch_size=cfg["batch_size"],
         lr=cfg["lr"],
         weight_decay=cfg["weight_decay"],
-        patience=cfg["patience"],
+        patience=cfg[patience_key],
         device=cfg["device"],
         seed=cfg["seed"],
     )
+    print(f"Protocol: {protocol}  (patience={tcfg.patience}, epochs={tcfg.epochs})")
     log_dir.mkdir(parents=True, exist_ok=True)
     results: dict = {}
 

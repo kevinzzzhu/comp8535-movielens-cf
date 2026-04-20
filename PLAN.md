@@ -49,7 +49,7 @@ Goal: three algorithmic changes end-to-end, training stable.
 - [x] Config toggle: `fusion ∈ {none, additive, gated}`, `head ∈ {sigmoid, ordinal}`
 - [ ] **Apply decisions log fixes** (from 2026-04-17 run):
   - [x] NMF: replace ReLU-in-forward with weight-projection step after `opt.step()` (2026-04-17, smoke-checked: embeddings min=0, max=0.49)
-  - [ ] Patience: add `patience_headline: 30` + `patience_ablation: 10` to config
+  - [x] Patience: `protocol: headline|ablation` switch in config, resolves to `patience_headline=30` or `patience_ablation=10` (2026-04-17)
   - [ ] Reporting: print MAE, accuracy, NLL alongside RMSE in `main.py`
   - [ ] Add `fusion=gated, head=sigmoid` ablation row
   - [ ] Initialise ordinal thresholds from empirical rating quantiles
