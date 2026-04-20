@@ -48,7 +48,7 @@ Goal: three algorithmic changes end-to-end, training stable.
 - [x] `OrdinalHead` (softplus-reparameterized thresholds, cumulative-link)
 - [x] Config toggle: `fusion ∈ {none, additive, gated}`, `head ∈ {sigmoid, ordinal}`
 - [ ] **Apply decisions log fixes** (from 2026-04-17 run):
-  - [ ] NMF: replace ReLU-in-forward with weight-projection step after `opt.step()`
+  - [x] NMF: replace ReLU-in-forward with weight-projection step after `opt.step()` (2026-04-17, smoke-checked: embeddings min=0, max=0.49)
   - [ ] Patience: add `patience_headline: 30` + `patience_ablation: 10` to config
   - [ ] Reporting: print MAE, accuracy, NLL alongside RMSE in `main.py`
   - [ ] Add `fusion=gated, head=sigmoid` ablation row
@@ -161,6 +161,8 @@ Kept here so that (a) we can cite the reasoning when writing the paper and (b) w
 **Why**: the point of including NMF is to show that the *non-negativity constraint* helps on ratings data; implementing it the same way as MF with a ReLU in forward conflates the constraint with a non-linearity. Projection is the textbook approach and the one the paper's narrative implicitly assumes.
 
 **Paper implication**: in the Baselines paragraph we can write "we implement NMF as projected gradient descent with biases, following the constrained-minimisation framework of Lee and Seung [3]". No hand-waving needed.
+
+**Implementation note (2026-04-17)**: Projection applies to the **factor matrices only** (`user_emb.weight`, `item_emb.weight`); biases are left unconstrained. This matches standard NMF-with-biases practice — biases absorb the global rating mean and per-user/per-item offsets that can legitimately be negative. Models expose a `project_()` method; the training loop calls it after each `opt.step()` via `hasattr(model, "project_")`. Models without the method (all non-NMF) pay zero cost.
 
 ---
 

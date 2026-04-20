@@ -9,6 +9,13 @@ from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import svds
 
 
+class ProjectableModel(nn.Module):
+    """Interface marker: models with a non-trivial `project_()` are clamped after each opt.step()."""
+
+    def project_(self) -> None:  # pragma: no cover — default no-op
+        return None
+
+
 def svd_baseline(train, n_users: int, n_items: int, rank: int = 20):
     """Truncated SVD on mean-filled rating matrix; returns predict(u,i) callable."""
     u = train.user_idx.numpy()
@@ -29,8 +36,10 @@ def svd_baseline(train, n_users: int, n_items: int, rank: int = 20):
     return predict
 
 
-class MFBias(nn.Module):
-    """Plain MF with biases. Non-negativity toggle for NMF variant."""
+class MFBias(ProjectableModel):
+    """MF with biases. Non-negativity is enforced by projecting embeddings to [0, +inf) after each
+    optimizer step — the classical NMF framework of Lee & Seung (2000). Only the factor matrices
+    are projected; biases remain unconstrained, matching standard NMF-with-biases practice."""
 
     def __init__(self, n_users: int, n_items: int, embed_dim: int = 128, non_negative: bool = False):
         super().__init__()
@@ -52,11 +61,14 @@ class MFBias(nn.Module):
     def forward(self, u_idx, i_idx):
         p = self.user_emb(u_idx)
         q = self.item_emb(i_idx)
-        if self.non_negative:
-            p = F.relu(p)
-            q = F.relu(q)
         s = (p * q).sum(dim=-1) + self.user_bias(u_idx).squeeze(-1) + self.item_bias(i_idx).squeeze(-1)
         return torch.sigmoid(s) * 4.0 + 1.0
 
     def loss(self, pred, target):
         return F.mse_loss(pred, target)
+
+    @torch.no_grad()
+    def project_(self) -> None:
+        if self.non_negative:
+            self.user_emb.weight.clamp_(min=0.0)
+            self.item_emb.weight.clamp_(min=0.0)

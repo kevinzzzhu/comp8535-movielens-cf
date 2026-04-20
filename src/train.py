@@ -92,7 +92,11 @@ def train_model(
             opt.zero_grad()
             loss.backward()
             opt.step()
-            running += float(loss) * u.shape[0]
+            # Projected gradient descent: models expose project_() for constraint enforcement
+            # (e.g. NMF's non-negativity on factor matrices).
+            if hasattr(model, "project_"):
+                model.project_()
+            running += float(loss.detach()) * u.shape[0]
 
         train_loss = running / len(train_ds)
         metrics = evaluate(model, test_loader, user_features, item_features, device, use_features)
