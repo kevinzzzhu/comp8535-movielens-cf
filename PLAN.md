@@ -26,12 +26,12 @@ Goal: working repo, baselines reproduced, numbers match published benchmarks.
 
 ### Reproduction
 - [x] Smoke-test pipeline (2 epochs, d=64) — RMSE 0.95, gate ≈ 0.49
-- [ ] Full 30-epoch run at d=128 — confirm:
-  - SVD ≈ 1.02–1.08
-  - MF ≈ 0.93
-  - NMF ≈ 0.92
-  - Proposed < 0.91
-- [ ] If MF/NMF > 0.94, debug before proceeding
+- [x] Full 30-epoch run at d=128 (2026-04-17, early-stop patience=5):
+  - SVD = **1.0834** (target 1.02–1.08 ✓)
+  - MF = **0.9221** (target ≈0.93 ✓, slightly better)
+  - NMF = **0.9397** (target ≈0.92 ✗ — anomaly, see Decisions log)
+  - Proposed = **0.9121** (target <0.91 marginal, see Decisions log)
+- [x] Debug anomaly — root cause identified (ReLU-in-forward instead of constrained weights), fix decided (projection step). Implementation deferred to Week 2 § first item.
 
 ### Literature
 - [ ] Re-read the 9 citations in `paper/refs.bib` already listed
@@ -47,10 +47,17 @@ Goal: three algorithmic changes end-to-end, training stable.
 - [x] `GatedFusion` module (per-dim gate, zero-init)
 - [x] `OrdinalHead` (softplus-reparameterized thresholds, cumulative-link)
 - [x] Config toggle: `fusion ∈ {none, additive, gated}`, `head ∈ {sigmoid, ordinal}`
+- [ ] **Apply decisions log fixes** (from 2026-04-17 run):
+  - [ ] NMF: replace ReLU-in-forward with weight-projection step after `opt.step()`
+  - [ ] Patience: add `patience_headline: 30` + `patience_ablation: 10` to config
+  - [ ] Reporting: print MAE, accuracy, NLL alongside RMSE in `main.py`
+  - [ ] Add `fusion=gated, head=sigmoid` ablation row
+  - [ ] Initialise ordinal thresholds from empirical rating quantiles
+  - [ ] Exclude ordinal thresholds from weight decay
 - [ ] Verify ordinal head invariants: `Σ P(r=k) = 1`, thresholds monotone, gradients non-zero
 - [ ] Add `tests/test_model.py` with 3–5 unit tests (gate shape, ordinal probs sum to 1, threshold ordering)
-- [ ] Full training run, proposed model, RMSE ≤ 0.91 on `u1.test`
-- [ ] Inspect mean gate across epochs — should stay in [0.2, 0.8], not collapse
+- [ ] Re-run headline protocol (patience=30) after fixes — proposed RMSE ≤ 0.91, NMF < MF
+- [ ] Inspect mean gate across epochs — should stay in [0.2, 0.8], not collapse (last run: 0.227 ✓)
 - [ ] **Writing**: report skeleton — fill Title/Authors, draft Introduction problem statement (~1 page)
 
 ---
