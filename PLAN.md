@@ -53,7 +53,7 @@ Goal: three algorithmic changes end-to-end, training stable.
   - [x] Reporting: RMSE, MAE, accuracy, NLL everywhere — `evaluate()` computes NLL when model emits `probs`; `main.py` prints all four; `scripts/render_results.py` PNG/md show NLL column (2026-04-17)
   - [ ] Add `fusion=gated, head=sigmoid` ablation row
   - [x] Initialise ordinal thresholds from empirical rating quantiles (2026-04-20, verified: predicted P(r=k) at s=0 matches empirical to 1e-7)
-  - [ ] Exclude ordinal thresholds from weight decay
+  - [x] Exclude ordinal thresholds from weight decay (2026-04-20, Adam param groups: 12 decay, 2 no-decay for theta1+deltas)
 - [ ] Verify ordinal head invariants: `Σ P(r=k) = 1`, thresholds monotone, gradients non-zero
 - [ ] Add `tests/test_model.py` with 3–5 unit tests (gate shape, ordinal probs sum to 1, threshold ordering)
 - [ ] Re-run headline protocol (patience=30) after fixes — proposed RMSE ≤ 0.91, NMF < MF

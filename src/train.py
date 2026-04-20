@@ -75,7 +75,20 @@ def train_model(
 
     train_loader = DataLoader(train_ds, batch_size=cfg.batch_size, shuffle=True)
     test_loader = DataLoader(test_ds, batch_size=1024, shuffle=False)
-    opt = torch.optim.Adam(model.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
+    # Split parameters: ordinal thresholds are few and their scale is calibration-critical,
+    # so they should not be shrunk by L2. Everything else gets cfg.weight_decay.
+    no_decay_params, decay_params = [], []
+    for name, p in model.named_parameters():
+        if not p.requires_grad:
+            continue
+        if name.startswith("head.theta1") or name.startswith("head.deltas"):
+            no_decay_params.append(p)
+        else:
+            decay_params.append(p)
+    param_groups = [{"params": decay_params, "weight_decay": cfg.weight_decay}]
+    if no_decay_params:
+        param_groups.append({"params": no_decay_params, "weight_decay": 0.0})
+    opt = torch.optim.Adam(param_groups, lr=cfg.lr)
 
     best_rmse = float("inf")
     best_state = None
