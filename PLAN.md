@@ -13,7 +13,7 @@ Status legend: `[x]` done · `[~]` in progress · `[ ]` pending · `[!]` blocker
 Goal: working repo, baselines reproduced, numbers match published benchmarks.
 
 ### Admin
-- [ ] **Mon 20 Apr (5pm)** — email Prof. Nan Yang (`nan.yang@anu.edu.au`) with group names + Uni IDs, cc all members
+- [ ] **Mon 20 Apr (5pm)** — email Prof. Nan Yang (`nan.yang@anu.edu.au`) declaring solo submission with Uni ID (course calls this a "group project" but Kevin is doing it alone)
 
 ### Repo & environment
 - [x] Create repo skeleton (`comp8535-movielens-cf/`)
@@ -96,7 +96,7 @@ Goal: second experimental axis — makes the paper richer than one table.
 
 ---
 
-## Week 5 — 16–22 May · Writing, polish, group review
+## Week 5 — 16–22 May · Writing, polish, self-review
 
 Goal: complete first full draft, internally reviewed.
 
@@ -105,8 +105,8 @@ Goal: complete first full draft, internally reviewed.
 - [ ] Write Abstract (last — summarises everything)
 - [ ] Trim to 6–7 pages (main fight: the ablation table — keep 6-row main table, move sensitivity to figure)
 - [ ] Reference count ≤ half page (aim 12–15 refs)
-- [ ] Per-member contribution statement (required appendix)
-- [ ] Full group read-through: grammar, notation consistency, figure legibility
+- [ ] Solo contribution statement (required appendix — name only, no split)
+- [ ] Full cold-read: grammar, notation consistency, figure legibility — print and mark up on paper
 - [ ] Freeze `main`, tag `v1.0`, update README with exact reproduction command
 
 ---
@@ -133,13 +133,13 @@ Goal: submit by **Wed 27 May**. Never submit on the last day.
 - [ ] **Ordinal head not helping RMSE**: acceptable if MAE / accuracy wins — frame it that way
 - [ ] **Page overflow**: Method target 1.5 pp, Experiments 2 pp, Intro/Conclusion ≤ 0.75 pp each
 - [ ] **Novelty risk**: don't put all novelty on the gate; ordinal head + IsoMap experiment are defence in depth
-- [ ] **Group coordination**: assign code / writing / experiments up front; weekly 30-min sync
+- [ ] **Solo time budget**: one person, ~5.5 weeks remaining → protect deep-work blocks; no teammates to absorb slippage
 
 ---
 
 ## Decisions deferred / open questions
 
-- [ ] Which teammates own which tracks (experiments vs writing vs viz)?
+- [x] Which teammates own which tracks — **N/A, solo submission** (confirmed 2026-04-21)
 - [ ] Will we submit MovieLens-1M ablation as bonus, or stay strictly on 100K? (Default: stay on 100K.)
 - [ ] Additional cited papers for Related Work — target 3–5 recent (2020+) CF papers for gravitas
 
@@ -223,3 +223,32 @@ Fixing these three issues is roughly 1 hour of code plus the writing framing abo
 **Why it matters**: the entire headline table was under-reporting the proposed model. Corrected numbers show proposed wins on **all four metrics** (RMSE 0.9122, MAE 0.7130, Acc 0.4367, NLL 1.2472 — below uniform 1.61, so the calibration claim holds). This is a strictly stronger paper story and removes the awkward "best RMSE but broken NLL" footnote.
 
 **Open follow-up**: the overfitting itself is real — proposed model peaks around epoch 4–5 and degrades monotonically thereafter. Options for Week 3: (a) introduce early stopping on a held-out *validation* subset of the train set (cleaner than stopping on test); (b) add dropout on embeddings; (c) increase weight decay on non-threshold params. Defer to ablation sweep — the `best_metrics` fix already gives us clean numbers to report without any of these.
+
+---
+
+### 2026-04-21 · Novelty audit — what is actually new, what must be cited
+
+**Problem**: Need to check whether the proposed method (gated fusion + cumulative-link ordinal head + IsoMap viz) is genuinely novel, or has been published already. Risk: marker knows a paper we failed to cite; contribution looks naive.
+
+**Audit findings (full agent report summarised):**
+
+- **Gated fusion of ID embedding with side-feature projection** is *not* new. Closest precedent: Ma et al., **GATE** (WSDM 2019) — sigmoid gate fusing item content with item embedding, item-side only. Recent 2024–2025 "gated fusion recommender" papers gate across modalities (image/text) or KG paths. *What appears unclaimed*: per-dimension symmetric (user & item) zero-init gate on a plain dot-product MF backbone with demographic/genre side features on MovieLens-100K.
+- **Cumulative-link ordinal head on CF** is *well-established*. Koren & Sill, **OrdRec** (RecSys 2011) is exactly this — 15 years ago. Saha et al., **OPRFM** (IJDSA 2024) is a near-direct FM analogue tested on ML-100K/1M/10M. Gouvert et al., **OrdNMF** (ICML 2020) is an ordinal NMF variant. Our softplus-monotone + quantile-init recipe is a clean engineering choice, not a new model.
+- **IsoMap on recsys embeddings** is rare; t-SNE and UMAP are standard. Using IsoMap is defensible (geodesic preservation, natural tie to classical MDS for a data-analytics course) but weak as a standalone contribution. Value lies in stratified silhouette comparison.
+- **The specific three-way combination** does not appear in the literature. OPRFM is the closest near-miss — FM backbone + ordinal probit + ML-100K — but uses bi-interaction (not our per-dimension gate), probit (not logit), and no manifold diagnostic. Not a scoop, but **must be cited**.
+
+**Decision — narrow the novelty claim to what we can actually defend.**
+
+Single defensible Introduction claim: *"We introduce a symmetric per-dimension gated fusion between ID embeddings and side-feature projections on a dot-product MF backbone, coupled with a cumulative-link ordinal head with empirical-quantile-initialised monotone thresholds; this combination lets a linear-core model (i) remain calibrated to the ordinal rating distribution from step zero and (ii) use side information only where it improves over the ID embedding, with per-dimension granularity."*
+
+Frame the contribution as **an integration study with a calibration claim and a geometry diagnostic**, on a transparent linear core — **not** a new learning algorithm and **not** a NeurIPS-grade contribution.
+
+**Mandatory citations to add to `paper/refs.bib` before Week 3 writing:**
+- Koren & Sill 2011, **OrdRec** — canonical ordinal recommender (the most important missing citation).
+- Saha et al. 2024, **OPRFM** — near-direct FM analogue, biggest scoop risk.
+- Gouvert et al. 2020, **OrdNMF** — ordinal NMF.
+- Ma et al. 2019, **GATE (Gated Attentive-Autoencoder)** — closest gated-fusion precedent.
+- Cao et al. 2020, **CLM for deep ordinal classification** / CORAL / CORN — ordinal-CV lineage for the softplus-monotone trick.
+- Tenenbaum et al. 2000, **IsoMap**; Van der Maaten & Hinton 2008, **t-SNE**; McInnes et al. 2018, **UMAP** — manifold-viz canon.
+
+**Paper implication**: Related Work must explicitly position against OrdRec and OPRFM — one paragraph each. Introduction must not claim to "introduce ordinal regression to CF" or "propose gated fusion for recommenders" — both overstate. Claim the **integration** + **calibration-from-quantiles** + **geometry diagnostic on a linear core**. Discussion honestly names each component's precedent.
