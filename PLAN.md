@@ -55,7 +55,7 @@ Goal: three algorithmic changes end-to-end, training stable.
   - [x] Initialise ordinal thresholds from empirical rating quantiles (2026-04-20, verified: predicted P(r=k) at s=0 matches empirical to 1e-7)
   - [x] Exclude ordinal thresholds from weight decay (2026-04-20, Adam param groups: 12 decay, 2 no-decay for theta1+deltas)
 - [ ] Verify ordinal head invariants: `Σ P(r=k) = 1`, thresholds monotone, gradients non-zero
-- [ ] Add `tests/test_model.py` with 3–5 unit tests (gate shape, ordinal probs sum to 1, threshold ordering)
+- [x] Add `tests/test_model.py` with 3–5 unit tests (2026-04-20, 6 tests green: gate shape, zero-init gate=0.5, probs sum to 1, threshold monotone, NMF projection, end-to-end forward/backward)
 - [ ] Re-run headline protocol (patience=30) after fixes — proposed RMSE ≤ 0.91, NMF < MF
 - [ ] Inspect mean gate across epochs — should stay in [0.2, 0.8], not collapse (last run: 0.227 ✓)
 - [ ] **Writing**: report skeleton — fill Title/Authors, draft Introduction problem statement (~1 page)
