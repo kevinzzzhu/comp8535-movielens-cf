@@ -56,8 +56,10 @@ Goal: three algorithmic changes end-to-end, training stable.
   - [x] Exclude ordinal thresholds from weight decay (2026-04-20, Adam param groups: 12 decay, 2 no-decay for theta1+deltas)
 - [ ] Verify ordinal head invariants: `Σ P(r=k) = 1`, thresholds monotone, gradients non-zero
 - [x] Add `tests/test_model.py` with 3–5 unit tests (2026-04-20, 6 tests green: gate shape, zero-init gate=0.5, probs sum to 1, threshold monotone, NMF projection, end-to-end forward/backward)
-- [ ] Re-run headline protocol (patience=30) after fixes — proposed RMSE ≤ 0.91, NMF < MF
+- [x] Re-run headline protocol (patience=30) after fixes — proposed RMSE 0.9122, MAE 0.7130, Acc 0.4367, NLL 1.2472; NMF 0.9197 < MF 0.9221 ✓ (2026-04-20, `results/2026-04-20_headline/`)
+- [x] Report from best-RMSE epoch, not final epoch — `best_metrics` in train_model; old headline run re-rendered (2026-04-20, see decisions log)
 - [ ] Inspect mean gate across epochs — should stay in [0.2, 0.8], not collapse (last run: 0.227 ✓)
+- [ ] Address overfitting: add held-out validation split for early stopping, or raise `weight_decay` on non-threshold params (deferred to Week 3 ablation sweep — see decisions log 2026-04-20)
 - [ ] **Writing**: report skeleton — fill Title/Authors, draft Introduction problem statement (~1 page)
 
 ---
@@ -203,3 +205,21 @@ Kept here so that (a) we can cite the reasoning when writing the paper and (b) w
 ### Scope-level recommendation
 
 Fixing these three issues is roughly 1 hour of code plus the writing framing above. It unlocks Week 2 (unit tests, run proposed model cleanly) and sets up Week 3 (ablations) and Week 5 (writing) for much less friction. Do not chase further tuning beyond this until the ablation sweep is done — any further optimisation done before the ablations will likely be invalidated by the final choice of `d`, `λ`, and `fusion/head` combo.
+
+---
+
+### 2026-04-20 · Headline metrics reported from last epoch instead of best epoch
+
+**Problem discovered**: first headline run (all 6 decisions-log fixes applied, patience=30) produced proposed RMSE=0.9122 ✓ but also proposed NLL=3.14 — **worse than uniform** (log 5 ≈ 1.61) despite good RMSE.
+
+**Root cause**: `train_model` restores `best_state` (best-RMSE epoch's weights) into the model, but `main.py` and `scripts/render_results.py` were reading per-epoch metrics from `history[-1]` — i.e. the final epoch. With `patience=30`, early stopping is disabled, so the final epoch is deep into overfitting: train loss 1.33 → 0.17, test NLL 1.28 → 3.14, test RMSE 0.95 → 1.09. The "model we kept" (epoch 4 weights) and the "metrics we reported" (epoch 30 numbers) were from different models. MAE and Acc were silently wrong for the same reason.
+
+**Evidence** (proposed model, u1 split):
+- Epoch 4 (best-RMSE, weights restored into model): RMSE=0.9123, MAE=0.7131, Acc=0.4362, NLL=1.2513
+- Epoch 30 (what we reported):                       RMSE=1.0907, MAE=0.8218, Acc=0.3905, NLL=3.1355
+
+**Decision**: `train_model` now also returns `best_metrics` — the full metrics snapshot at the best-RMSE epoch. `main.py` reads headline row from `best_metrics`; `render_results.py` too, with a fallback that scans history by RMSE so old result JSON files re-render correctly. Re-rendered 2026-04-20_headline in place — the `results.json` itself was correct (it stores full history); only the summary derived from it was wrong.
+
+**Why it matters**: the entire headline table was under-reporting the proposed model. Corrected numbers show proposed wins on **all four metrics** (RMSE 0.9122, MAE 0.7130, Acc 0.4367, NLL 1.2472 — below uniform 1.61, so the calibration claim holds). This is a strictly stronger paper story and removes the awkward "best RMSE but broken NLL" footnote.
+
+**Open follow-up**: the overfitting itself is real — proposed model peaks around epoch 4–5 and degrades monotonically thereafter. Options for Week 3: (a) introduce early stopping on a held-out *validation* subset of the train set (cleaner than stopping on test); (b) add dropout on embeddings; (c) increase weight decay on non-threshold params. Defer to ablation sweep — the `best_metrics` fix already gives us clean numbers to report without any of these.

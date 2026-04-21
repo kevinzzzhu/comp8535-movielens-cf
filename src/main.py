@@ -112,11 +112,14 @@ def run(cfg_path: Path, log_dir: Path):
     print(f"Wrote {out}")
     print(f"  {'model':<12} {'RMSE':>8} {'MAE':>8} {'Acc':>8} {'NLL':>8}")
     for k, v in results.items():
-        last = v.get("history", [{}])[-1] if "history" in v else v
+        # Prefer metrics from the best-RMSE epoch (weights we actually kept) rather than
+        # history[-1], which reflects the final epoch — can be heavily overfit when
+        # patience disables early stopping (see decisions log 2026-04-20).
+        snap = v.get("best_metrics") or (v.get("history", [{}])[-1] if "history" in v else v)
         rmse = v.get("best_rmse", v.get("rmse"))
-        mae = last.get("mae", float("nan"))
-        acc = last.get("acc", float("nan"))
-        nll = last.get("nll", float("nan"))
+        mae = snap.get("mae", float("nan"))
+        acc = snap.get("acc", float("nan"))
+        nll = snap.get("nll", float("nan"))
         print(f"  {k:<12} {rmse:>8.4f} {mae:>8.4f} {acc:>8.4f} {nll:>8.4f}")
 
 

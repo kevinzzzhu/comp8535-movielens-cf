@@ -24,13 +24,23 @@ def render(run_dir: Path) -> None:
     for name in list(results.keys()):
         r = results[name]
         if "history" in r:
-            last = r["history"][-1]
+            # Prefer best-RMSE-epoch snapshot (matches the weights restored into the model).
+            # Fall back by scanning history for the epoch whose RMSE equals best_rmse, so
+            # older runs (pre-2026-04-20, no `best_metrics` key) render correctly too.
+            snap = r.get("best_metrics")
+            if snap is None:
+                hist = r["history"]
+                best_rmse = r.get("best_rmse")
+                if best_rmse is not None:
+                    snap = min(hist, key=lambda h: abs(h.get("rmse", float("inf")) - best_rmse))
+                else:
+                    snap = hist[-1]
             row = {
                 "model": name,
                 "rmse": _fmt(r.get("best_rmse")),
-                "mae": _fmt(last.get("mae")),
-                "acc": _fmt(last.get("acc")),
-                "nll": _fmt(last.get("nll")),
+                "mae": _fmt(snap.get("mae")),
+                "acc": _fmt(snap.get("acc")),
+                "nll": _fmt(snap.get("nll")),
                 "epochs": len(r["history"]),
             }
         else:

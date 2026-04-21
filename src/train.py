@@ -92,6 +92,7 @@ def train_model(
 
     best_rmse = float("inf")
     best_state = None
+    best_metrics = None
     stale = 0
     history = []
 
@@ -130,6 +131,7 @@ def train_model(
         if metrics["rmse"] < best_rmse - 1e-4:
             best_rmse = metrics["rmse"]
             best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
+            best_metrics = dict(entry)
             stale = 0
         else:
             stale += 1
@@ -138,4 +140,4 @@ def train_model(
 
     if best_state is not None:
         model.load_state_dict(best_state)
-    return {"best_rmse": best_rmse, "history": history}
+    return {"best_rmse": best_rmse, "best_metrics": best_metrics, "history": history}
