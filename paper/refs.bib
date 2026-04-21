@@ -54,3 +54,102 @@
   title={Factorization machines},
   author={Rendle, Steffen}, booktitle={ICDM}, pages={995--1000}, year={2010}
 }
+
+% ---- Ordinal / cumulative-link models for CF (must-cite block) ----
+% OrdRec: canonical ordinal recommender, direct precedent for the head used in this paper.
+@inproceedings{koren2011ordrec,
+  title={{OrdRec}: an ordinal model for predicting personalized item rating distributions},
+  author={Koren, Yehuda and Sill, Joseph},
+  booktitle={RecSys}, pages={117--124}, year={2011}
+}
+% OPRFM: FM + ordinal probit on ML-100K/1M/10M — closest contemporary analogue.
+@article{zaman2025oprfm,
+  author={Zaman, Nilufar and Jana, Angshuman},
+  title={Automated recommendation model using ordinal probit regression factorization machines},
+  journal={International Journal of Data Science and Analytics},
+  year={2025}, volume={20}, number={3}, pages={2615--2629},
+  doi={10.1007/s41060-024-00623-9}
+}
+% OrdNMF: ordinal NMF via quantisation thresholds, related generative formulation.
+@inproceedings{gouvert2020ordnmf,
+  title={Ordinal non-negative matrix factorization for recommendation},
+  author={Gouvert, Olivier and Oberlin, Thomas and F{\'e}votte, C{\'e}dric},
+  booktitle={ICML}, pages={3680--3689}, year={2020}
+}
+% Earlier ordinal-feedback CF (Koren & Sill); useful for Related Work breadth.
+% TODO(kevin): verify author list + exact pages before final submission.
+@inproceedings{koren2013ordinalfeedback,
+  title={Collaborative filtering on ordinal user feedback},
+  author={Koren, Yehuda and Sill, Joseph},
+  booktitle={IJCAI}, year={2013}
+}
+% Ordinal Random Fields for Recommender Systems — ACML 2014 (PMLR v39), not AISTATS.
+@inproceedings{liu2014orf,
+  author={Liu, Shaowu and Tran, Truyen and Li, Gang},
+  title={Ordinal random fields for recommender systems},
+  booktitle={Proceedings of the Sixth Asian Conference on Machine Learning (ACML)},
+  series={Proceedings of Machine Learning Research}, volume={39},
+  pages={283--298}, year={2014}, publisher={PMLR},
+  url={https://proceedings.mlr.press/v39/liu14.html}
+}
+% CLM for deep ordinal classification — justifies our softplus-monotone threshold trick.
+@article{vargas2020clm,
+  author={Vargas, V{\'i}ctor Manuel and Guti{\'e}rrez, Pedro Antonio and Herv{\'a}s-Mart{\'i}nez, C{\'e}sar},
+  title={Cumulative link models for deep ordinal classification},
+  journal={Neurocomputing}, year={2020}, volume={401}, pages={48--58},
+  doi={10.1016/j.neucom.2020.03.034}
+}
+% CORAL: rank-consistent ordinal regression — our threshold-ordering invariant mirrors this.
+@article{cao2020coral,
+  author={Cao, Wenzhi and Mirjalili, Vahid and Raschka, Sebastian},
+  title={Rank consistent ordinal regression for neural networks with application to age estimation},
+  journal={Pattern Recognition Letters}, year={2020}, volume={140}, pages={325--331},
+  doi={10.1016/j.patrec.2020.11.008}
+}
+
+% ---- Gated fusion in recommenders (closest precedent) ----
+% GATE: sigmoid gate fusing item content with item embedding — item-side only, asymmetric.
+@inproceedings{ma2019gate,
+  title={Gated attentive-autoencoder for content-aware recommendation},
+  author={Ma, Chen and Kang, Peng and Wu, Bin and Wang, Qinglong and Liu, Xue},
+  booktitle={WSDM}, pages={519--527}, year={2019}
+}
+
+% ---- FM / deep-CF lineage for Related Work positioning ----
+@inproceedings{he2017nfm,
+  title={Neural factorization machines for sparse predictive analytics},
+  author={He, Xiangnan and Chua, Tat-Seng},
+  booktitle={SIGIR}, pages={355--364}, year={2017}
+}
+@inproceedings{xiao2017afm,
+  title={Attentional factorization machines: learning the weight of feature interactions via attention networks},
+  author={Xiao, Jun and Ye, Hao and He, Xiangnan and Zhang, Hanwang and Wu, Fei and Chua, Tat-Seng},
+  booktitle={IJCAI}, pages={3119--3125}, year={2017}
+}
+@inproceedings{guo2017deepfm,
+  title={{DeepFM}: a factorization-machine based neural network for {CTR} prediction},
+  author={Guo, Huifeng and Tang, Ruiming and Ye, Yunming and Li, Zhenguo and He, Xiuqiang},
+  booktitle={IJCAI}, pages={1725--1731}, year={2017}
+}
+@inproceedings{cheng2016widedeep,
+  title={Wide \& deep learning for recommender systems},
+  author={Cheng, Heng-Tze and Koc, Levent and Harmsen, Jeremiah and Shaked, Tal and Chandra, Tushar and Aradhye, Hrishi and Anderson, Glen and Corrado, Greg and Chai, Wei and Ispir, Mustafa and others},
+  booktitle={DLRS}, pages={7--10}, year={2016}
+}
+@inproceedings{lian2018xdeepfm,
+  title={{xDeepFM}: combining explicit and implicit feature interactions for recommender systems},
+  author={Lian, Jianxun and Zhou, Xiaohuan and Zhang, Fuzheng and Chen, Zhongxia and Xie, Xing and Sun, Guangzhong},
+  booktitle={KDD}, pages={1754--1763}, year={2018}
+}
+
+% ---- Manifold / visualisation canon ----
+@article{maaten2008tsne,
+  title={Visualizing data using {t-SNE}},
+  author={van der Maaten, Laurens and Hinton, Geoffrey},
+  journal={JMLR}, volume={9}, pages={2579--2605}, year={2008}
+}
+@article{mcinnes2018umap,
+  title={{UMAP}: Uniform manifold approximation and projection for dimension reduction},
+  author={McInnes, Leland and Healy, John and Melville, James},
+  journal={arXiv:1802.03426}, year={2018}
+}
