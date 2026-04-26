@@ -13,7 +13,7 @@ Status legend: `[x]` done · `[~]` in progress · `[ ]` pending · `[!]` blocker
 Goal: working repo, baselines reproduced, numbers match published benchmarks.
 
 ### Admin
-- [ ] **Mon 20 Apr (5pm)** — email Prof. Nan Yang (`nan.yang@anu.edu.au`) declaring solo submission with Uni ID (course calls this a "group project" but Kevin is doing it alone)
+- [x] **Mon 20 Apr (5pm)** — emailed Prof. Nan Yang (`nan.yang@anu.edu.au`) declaring solo submission with Uni ID u7338066 (course calls this a "group project" but Kevin is doing it alone) (confirmed 2026-04-26)
 
 ### Repo & environment
 - [x] Create repo skeleton (`comp8535-movielens-cf/`)
@@ -34,9 +34,9 @@ Goal: working repo, baselines reproduced, numbers match published benchmarks.
 - [x] Debug anomaly — root cause identified (ReLU-in-forward instead of constrained weights), fix decided (projection step). Implementation deferred to Week 2 § first item.
 
 ### Literature
-- [ ] Re-read the 9 citations in `paper/refs.bib` already listed
-- [ ] Add 3–5 references: Factorization Machines, ordinal regression (McCullagh 1980), IsoMap (Tenenbaum 2000) — some already stubbed, verify and expand
-- [ ] Draft 2–3 paragraphs of Related Work
+- [x] Re-read the 9 citations in `paper/refs.bib` already listed (subsumed by 2026-04-21 audit)
+- [x] Add 3–5 references: Factorization Machines, ordinal regression (McCullagh 1980), IsoMap (Tenenbaum 2000) — done as part of 2026-04-21 novelty audit, ended at 27 verified entries (commit 73e1dc3)
+- [x] Draft 2–3 paragraphs of Related Work — embedded as paragraph in §1 of `paper/main.tex` per existing skeleton (commit c633829)
 
 ---
 
@@ -54,13 +54,13 @@ Goal: three algorithmic changes end-to-end, training stable.
   - [x] Add `fusion=gated, head=sigmoid` ablation row (2026-04-20, toggled via `run_gated_sigmoid_ablation: true`; smoke-tested gate init ~0.5, pred range 3.18–3.42)
   - [x] Initialise ordinal thresholds from empirical rating quantiles (2026-04-20, verified: predicted P(r=k) at s=0 matches empirical to 1e-7)
   - [x] Exclude ordinal thresholds from weight decay (2026-04-20, Adam param groups: 12 decay, 2 no-decay for theta1+deltas)
-- [ ] Verify ordinal head invariants: `Σ P(r=k) = 1`, thresholds monotone, gradients non-zero
+- [x] Verify ordinal head invariants: `Σ P(r=k) = 1`, thresholds monotone, gradients non-zero (covered by `tests/test_model.py`, 2026-04-20)
 - [x] Add `tests/test_model.py` with 3–5 unit tests (2026-04-20, 6 tests green: gate shape, zero-init gate=0.5, probs sum to 1, threshold monotone, NMF projection, end-to-end forward/backward)
 - [x] Re-run headline protocol (patience=30) after fixes — proposed RMSE 0.9122, MAE 0.7130, Acc 0.4367, NLL 1.2472; NMF 0.9197 < MF 0.9221 ✓ (2026-04-20, `results/2026-04-20_headline/`)
 - [x] Report from best-RMSE epoch, not final epoch — `best_metrics` in train_model; old headline run re-rendered (2026-04-20, see decisions log)
-- [ ] Inspect mean gate across epochs — should stay in [0.2, 0.8], not collapse (last run: 0.227 ✓)
-- [ ] Address overfitting: add held-out validation split for early stopping, or raise `weight_decay` on non-threshold params (deferred to Week 3 ablation sweep — see decisions log 2026-04-20)
-- [ ] **Writing**: report skeleton — fill Title/Authors, draft Introduction problem statement (~1 page)
+- [x] Inspect mean gate across epochs — last run: 0.227 ✓ in [0.2, 0.8] band, no collapse (2026-04-20)
+- [ ] Address overfitting: add held-out validation split for early stopping, or raise `weight_decay` on non-threshold params (deferred — sensitivity sweep 2026-04-26 confirmed default λ=1e-5 is the U-curve optimum, so weight-decay path is closed; held-out val split remains a Week 5 nice-to-have)
+- [x] **Writing**: report skeleton — Title/Authors filled (Kevin Zhu, u7338066), Introduction + problem statement drafted (commit c633829, ~1 page)
 
 ---
 

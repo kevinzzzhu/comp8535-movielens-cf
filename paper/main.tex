@@ -1,12 +1,15 @@
-\documentclass{article}
+\documentclass{article} % For LaTeX2e
+\usepackage{nips15submit_e,times}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{amsmath,amssymb,graphicx,booktabs}
 
-% Placeholder: swap in the NeurIPS style file from Canvas once available.
-\usepackage[final]{neurips_2024}
-\usepackage{amsmath,amssymb,graphicx,booktabs,url}
+% Course-required: use NIPS camera-ready format.
+\nipsfinalcopy
 
 \title{Gated Auxiliary Fusion with Ordinal Regression\\ for Collaborative Filtering on MovieLens-100K}
 \author{
-  Kevin Zhu \\ Australian National University \\ \texttt{uXXXXXXX@anu.edu.au}
+  Kevin Zhu \\ Australian National University \\ \texttt{u7338066@anu.edu.au}
 }
 
 \begin{document}
@@ -92,9 +95,10 @@ that validates the chosen defaults.
 Let $\mathcal{U}=\{1,\dots,n\}$ be the set of users and $\mathcal{I}=\{1,\dots,m\}$
 the set of items. Observed ratings form a sparse set
 $\mathcal{D}=\{(u_t,i_t,r_t)\}_{t=1}^{N}$ with $r_t\in\{1,2,3,4,5\}$. Each user
-$u$ carries a side-information vector $f_u\in\mathbb{R}^{d_u}$ (one-hot age
-bucket, gender, occupation in MovieLens-100K) and each item $i$ carries
-$g_i\in\mathbb{R}^{d_i}$ (multi-hot genre indicator, release decade). The task
+$u$ carries a side-information vector $f_u\in\mathbb{R}^{d_u}$ (z-scored age,
+one-hot gender, one-hot occupation in MovieLens-100K, $d_u=24$) and each
+item $i$ carries $g_i\in\mathbb{R}^{d_i}$ (multi-hot genre indicator,
+$d_i=19$). The task
 is to predict $\hat r_{ui}$ for held-out $(u,i)$ pairs, evaluated by RMSE, MAE,
 classification accuracy of the rounded prediction, and where applicable the
 held-out negative log-likelihood (NLL) of the predicted rating distribution.
@@ -171,9 +175,9 @@ $\hat r_{ui}=4\sigma(s_{ui})+1$ trained with mean-squared error.
 \subsection{Complexity}
 The MF backbone has $(n+m)d$ embedding parameters plus $n+m$ biases; for
 MovieLens-100K with $n=943$, $m=1682$, $d=128$, that is $\approx 3.4\times10^5$
-parameters. Each fusion module adds a projection ($d_{u/i}\cdot d$) and a gate
-($2d^2+d$), totalling $\approx 8\times10^4$ parameters --- about a quarter of
-the embedding budget. The ordinal head adds $K-1=4$ parameters. Per training
+parameters. Each fusion module adds a projection ($d_{u/i}\cdot d + d$) and a gate
+($2d^2+d$); summed over both sides this is $\approx 7\times10^4$ parameters
+--- about one-fifth of the embedding budget. The ordinal head adds $K-1=4$ parameters. Per training
 step the dominant cost remains the embedding lookup and dot product, $O(d)$
 per observed rating; on M1 Pro CPU one ablation epoch is $\sim2$~s.
 
@@ -183,9 +187,9 @@ per observed rating; on M1 Pro CPU one ablation epoch is $\sim2$~s.
 \subsection{Setup}
 We use MovieLens-100K~\cite{harper2015movielens}, the canonical \texttt{u1.base}
 / \texttt{u1.test} split (80/20), giving $80{,}000$ training and $20{,}000$ test
-ratings on $943$ users and $1{,}682$ items. User side features are 7-bucket age,
-binary gender, and 21-class one-hot occupation; item features are 19-genre
-multi-hot. All experiments use Adam~\cite{kingma2014adam} with learning rate
+ratings on $943$ users and $1{,}682$ items. User side features are z-scored age,
+two-class one-hot gender, and 21-class one-hot occupation ($d_u=24$); item
+features are 19-genre multi-hot ($d_i=19$). All experiments use Adam~\cite{kingma2014adam} with learning rate
 $10^{-3}$ and weight decay $\lambda=10^{-5}$ on all parameters except the
 ordinal-head thresholds. We report two protocols. \emph{Headline} uses
 $\text{patience}=30$ (i.e.\ disabled early stopping, fixed 30 epochs) to match
