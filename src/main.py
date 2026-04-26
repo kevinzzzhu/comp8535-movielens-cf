@@ -11,7 +11,7 @@ import yaml
 from torch.utils.data import DataLoader
 
 from src.baselines import MFBias, svd_baseline
-from src.dataset import build_metadata, load_split
+from src.dataset import build_metadata, load_split, load_split_with_val
 from src.model import CFGatedOrdinal
 from src.train import TrainConfig, evaluate, set_seed, train_model
 
@@ -27,7 +27,7 @@ def run(cfg_path: Path, log_dir: Path):
 
     data_dir = Path(cfg["data_dir"])
     meta = build_metadata(data_dir)
-    train_ds, test_ds = load_split(data_dir, split=cfg["split"])
+    train_ds, val_ds, test_ds = load_split_with_val(data_dir, split=cfg["split"])
 
     protocol = cfg.get("protocol", "headline")
     patience_key = f"patience_{protocol}"
@@ -61,11 +61,11 @@ def run(cfg_path: Path, log_dir: Path):
 
     # --- MF
     mf = MFBias(meta.n_users, meta.n_items, embed_dim=cfg["embed_dim"], non_negative=False)
-    results["mf"] = train_model(mf, train_ds, test_ds, tcfg, use_features=False)
+    results["mf"] = train_model(mf, train_ds, val_ds, test_ds, tcfg, use_features=False)
 
     # --- NMF
     nmf = MFBias(meta.n_users, meta.n_items, embed_dim=cfg["embed_dim"], non_negative=True)
-    results["nmf"] = train_model(nmf, train_ds, test_ds, tcfg, use_features=False)
+    results["nmf"] = train_model(nmf, train_ds, val_ds, test_ds, tcfg, use_features=False)
 
     # --- Proposed: gated fusion + ordinal head
     proposed = CFGatedOrdinal(
@@ -79,7 +79,7 @@ def run(cfg_path: Path, log_dir: Path):
         train_ratings=train_ds.rating if cfg["head"] == "ordinal" else None,
     )
     results["proposed"] = train_model(
-        proposed, train_ds, test_ds, tcfg,
+        proposed, train_ds, val_ds, test_ds, tcfg,
         user_features=meta.user_features,
         item_features=meta.item_features,
         use_features=True,
@@ -99,7 +99,7 @@ def run(cfg_path: Path, log_dir: Path):
             head="sigmoid",
         )
         results["gated_sigmoid"] = train_model(
-            gated_sigmoid, train_ds, test_ds, tcfg,
+            gated_sigmoid, train_ds, val_ds, test_ds, tcfg,
             user_features=meta.user_features,
             item_features=meta.item_features,
             use_features=True,

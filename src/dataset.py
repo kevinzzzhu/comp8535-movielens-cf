@@ -89,3 +89,51 @@ def load_split(data_dir: Path, split: str = "u1") -> tuple[RatingDataset, Rating
     train = RatingDataset(data_dir / f"{split}.base")
     test = RatingDataset(data_dir / f"{split}.test")
     return train, test
+
+
+class _RatingSubset:
+    """Index-based view over a RatingDataset; duck-types as a Dataset.
+
+    Exposes the same `user_idx`, `item_idx`, `rating` tensors that the rest of
+    the codebase pulls off `RatingDataset` (e.g. OrdinalHead's
+    `_thresholds_from_ratings`), so swapping a subset in for a full split
+    requires no further plumbing changes.
+    """
+
+    def __init__(self, parent: RatingDataset, idx: np.ndarray):
+        idx_t = torch.as_tensor(idx, dtype=torch.long)
+        self.user_idx = parent.user_idx[idx_t]
+        self.item_idx = parent.item_idx[idx_t]
+        self.rating = parent.rating[idx_t]
+
+    def __len__(self) -> int:
+        return self.rating.shape[0]
+
+    def __getitem__(self, i: int):
+        return self.user_idx[i], self.item_idx[i], self.rating[i]
+
+
+def load_split_with_val(
+    data_dir: Path,
+    split: str = "u1",
+    val_frac: float = 0.1,
+    val_seed: int = 0,
+) -> tuple[_RatingSubset, _RatingSubset, RatingDataset]:
+    """Load (train, val, test) where val is a `val_frac` slice of `<split>.base`.
+
+    `val_seed` is independent of any training seed, so all training-seed
+    replicates share the same val split (otherwise val-split variance would be
+    conflated with model-init variance). Default `val_seed=0` is fixed across
+    the project.
+    """
+    train_full = RatingDataset(data_dir / f"{split}.base")
+    test = RatingDataset(data_dir / f"{split}.test")
+    n = len(train_full)
+    n_val = int(round(n * val_frac))
+    rng = np.random.default_rng(val_seed)
+    perm = rng.permutation(n)
+    val_idx = perm[:n_val]
+    train_idx = perm[n_val:]
+    train = _RatingSubset(train_full, train_idx)
+    val = _RatingSubset(train_full, val_idx)
+    return train, val, test

@@ -30,7 +30,7 @@ from statistics import mean, stdev
 import numpy as np
 import yaml
 
-from src.dataset import build_metadata, load_split
+from src.dataset import build_metadata, load_split, load_split_with_val
 from src.model import CFGatedOrdinal
 from src.train import TrainConfig, set_seed, train_model
 
@@ -53,7 +53,7 @@ def run_one(cfg: dict, d: int, lam: float, seed: int, out_dir: Path) -> dict:
     set_seed(seed)
     data_dir = Path(cfg["data_dir"])
     meta = build_metadata(data_dir)
-    train_ds, test_ds = load_split(data_dir, split=cfg["split"])
+    train_ds, val_ds, test_ds = load_split_with_val(data_dir, split=cfg["split"])
 
     tcfg = TrainConfig(
         epochs=cfg["epochs"],
@@ -78,7 +78,7 @@ def run_one(cfg: dict, d: int, lam: float, seed: int, out_dir: Path) -> dict:
 
     t0 = time.perf_counter()
     result = train_model(
-        model, train_ds, test_ds, tcfg,
+        model, train_ds, val_ds, test_ds, tcfg,
         user_features=meta.user_features,
         item_features=meta.item_features,
         use_features=True,

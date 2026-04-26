@@ -41,7 +41,7 @@ import numpy as np
 import torch
 import yaml
 
-from src.dataset import build_metadata, load_split
+from src.dataset import build_metadata, load_split, load_split_with_val
 from src.model import CFGatedOrdinal
 from src.train import TrainConfig, set_seed, train_model
 
@@ -77,7 +77,7 @@ def _build_user_activity(train_ds, n_users: int) -> np.ndarray:
     return activity
 
 
-def _train_one(cfg, meta, train_ds, test_ds, fusion: str, head: str = "ordinal") -> CFGatedOrdinal:
+def _train_one(cfg, meta, train_ds, val_ds, test_ds, fusion: str, head: str = "ordinal") -> CFGatedOrdinal:
     """Train one CFGatedOrdinal config end-to-end. Returns the trained model."""
     tcfg = TrainConfig(
         epochs=cfg["epochs"], batch_size=cfg["batch_size"],
@@ -92,7 +92,7 @@ def _train_one(cfg, meta, train_ds, test_ds, fusion: str, head: str = "ordinal")
         train_ratings=train_ds.rating if head == "ordinal" else None,
     )
     train_model(
-        model, train_ds, test_ds, tcfg,
+        model, train_ds, val_ds, test_ds, tcfg,
         user_features=meta.user_features, item_features=meta.item_features,
         use_features=True, log_gate=(fusion == "gated"),
     )
@@ -117,7 +117,7 @@ def main():
     set_seed(args.seed)
     data_dir = Path(cfg["data_dir"])
     meta = build_metadata(data_dir)
-    train_ds, test_ds = load_split(data_dir, split=cfg["split"])
+    train_ds, val_ds, test_ds = load_split_with_val(data_dir, split=cfg["split"])
     activity = _build_user_activity(train_ds, meta.n_users)
 
     # Per-test-rating user activity (i.e. each test row inherits its user's |R_u|).
@@ -141,7 +141,7 @@ def main():
     print("Training gated+ordinal …")
     set_seed(args.seed)
     t0 = time.perf_counter()
-    gated = _train_one(cfg, meta, train_ds, test_ds, fusion="gated")
+    gated = _train_one(cfg, meta, train_ds, val_ds, test_ds, fusion="gated")
     gated_t = time.perf_counter() - t0
     gated_out = _predict_with_gates(gated, meta, test_ds)
     print(f"  done in {gated_t:.1f}s")
@@ -149,7 +149,7 @@ def main():
     print("Training additive+ordinal …")
     set_seed(args.seed)
     t0 = time.perf_counter()
-    additive = _train_one(cfg, meta, train_ds, test_ds, fusion="additive")
+    additive = _train_one(cfg, meta, train_ds, val_ds, test_ds, fusion="additive")
     additive_t = time.perf_counter() - t0
     additive_out = _predict_with_gates(additive, meta, test_ds)
     print(f"  done in {additive_t:.1f}s")

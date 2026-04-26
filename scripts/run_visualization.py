@@ -31,7 +31,7 @@ import pandas as pd
 import torch
 import yaml
 
-from src.dataset import GENRES, build_metadata, load_split
+from src.dataset import GENRES, build_metadata, load_split, load_split_with_val
 from src.model import CFGatedOrdinal
 from src.train import TrainConfig, set_seed, train_model
 from src.visualize import project, silhouette
@@ -144,7 +144,7 @@ def main():
     set_seed(args.seed)
     data_dir = Path(cfg["data_dir"])
     meta = build_metadata(data_dir)
-    train_ds, test_ds = load_split(data_dir, split=cfg["split"])
+    train_ds, val_ds, test_ds = load_split_with_val(data_dir, split=cfg["split"])
 
     tcfg = TrainConfig(
         epochs=cfg["epochs"],
@@ -165,7 +165,7 @@ def main():
         train_ratings=train_ds.rating,
     )
     result = train_model(
-        model, train_ds, test_ds, tcfg,
+        model, train_ds, val_ds, test_ds, tcfg,
         user_features=meta.user_features, item_features=meta.item_features,
         use_features=True, log_gate=True,
     )

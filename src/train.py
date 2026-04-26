@@ -60,6 +60,7 @@ def evaluate(model, loader, user_features, item_features, device: str, use_featu
 def train_model(
     model,
     train_ds,
+    val_ds,
     test_ds,
     cfg: TrainConfig,
     user_features: torch.Tensor | None = None,
@@ -67,6 +68,19 @@ def train_model(
     use_features: bool = True,
     log_gate: bool = False,
 ):
+    """Train with val-RMSE early stopping and a single end-of-training test eval.
+
+    `val_ds` drives early stopping. `test_ds` is evaluated exactly once, with
+    the best-val weights loaded back into `model`, after training finishes. The
+    returned dict's `best_rmse`/`best_metrics` are the test-set numbers
+    (preserving the downstream rendering API), and `best_val_rmse`/
+    `best_val_metrics` carry the val-side selection signal. The per-epoch
+    `history` records val metrics only — test is never read during training.
+
+    If `val_ds` is None we fall back to the legacy behaviour (early-stop on
+    `test_ds`); this is kept only so old result archives can be re-rendered,
+    not for new runs.
+    """
     device = cfg.device
     model.to(device)
     if user_features is not None:
@@ -74,7 +88,10 @@ def train_model(
         item_features = item_features.to(device)
 
     train_loader = DataLoader(train_ds, batch_size=cfg.batch_size, shuffle=True)
+    selection_ds = val_ds if val_ds is not None else test_ds
+    selection_loader = DataLoader(selection_ds, batch_size=1024, shuffle=False)
     test_loader = DataLoader(test_ds, batch_size=1024, shuffle=False)
+
     # Split parameters: ordinal thresholds are few and their scale is calibration-critical,
     # so they should not be shrunk by L2. Everything else gets cfg.weight_decay.
     no_decay_params, decay_params = [], []
@@ -90,9 +107,9 @@ def train_model(
         param_groups.append({"params": no_decay_params, "weight_decay": 0.0})
     opt = torch.optim.Adam(param_groups, lr=cfg.lr)
 
-    best_rmse = float("inf")
+    best_val_rmse = float("inf")
     best_state = None
-    best_metrics = None
+    best_val_metrics = None
     stale = 0
     history = []
 
@@ -115,23 +132,21 @@ def train_model(
             opt.zero_grad()
             loss.backward()
             opt.step()
-            # Projected gradient descent: models expose project_() for constraint enforcement
-            # (e.g. NMF's non-negativity on factor matrices).
             if hasattr(model, "project_"):
                 model.project_()
             running += float(loss.detach()) * u.shape[0]
 
         train_loss = running / len(train_ds)
-        metrics = evaluate(model, test_loader, user_features, item_features, device, use_features)
-        entry = {"epoch": epoch, "train_loss": train_loss, **metrics}
+        val_metrics = evaluate(model, selection_loader, user_features, item_features, device, use_features)
+        entry = {"epoch": epoch, "train_loss": train_loss, **{f"val_{k}": v for k, v in val_metrics.items()}}
         if log_gate and gate_n > 0:
             entry["mean_gate"] = gate_sum / gate_n
         history.append(entry)
 
-        if metrics["rmse"] < best_rmse - 1e-4:
-            best_rmse = metrics["rmse"]
+        if val_metrics["rmse"] < best_val_rmse - 1e-4:
+            best_val_rmse = val_metrics["rmse"]
             best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
-            best_metrics = dict(entry)
+            best_val_metrics = dict(val_metrics)
             stale = 0
         else:
             stale += 1
@@ -140,4 +155,16 @@ def train_model(
 
     if best_state is not None:
         model.load_state_dict(best_state)
-    return {"best_rmse": best_rmse, "best_metrics": best_metrics, "history": history}
+
+    # Single test evaluation with best-val weights restored.
+    test_metrics = evaluate(model, test_loader, user_features, item_features, device, use_features)
+
+    return {
+        "best_val_rmse": best_val_rmse,
+        "best_val_metrics": best_val_metrics,
+        "history": history,
+        # Backwards-compatible keys used by render scripts: now interpreted as
+        # "test metrics evaluated once at the best-val epoch".
+        "best_rmse": test_metrics["rmse"],
+        "best_metrics": test_metrics,
+    }

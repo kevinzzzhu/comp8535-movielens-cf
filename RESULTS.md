@@ -13,6 +13,14 @@ don't have to scroll through `PLAN.md` decisions log or open four CSV files.
 If a number disagrees between this file and a CSV, **the CSV wins** — fix this
 file.
 
+> **2026-04-27 protocol switch**: all reported numbers below now use **val-driven
+> early stopping** with a fixed 10% slice of `u1.base` as the held-out
+> validation set (val-split seed 0). The test set is read exactly once at
+> the end of training. This corrects the test-set leakage flagged in the
+> 2026-04-20 decisions log. Numbers shifted uniformly by ~+0.006 RMSE
+> (worse, but methodologically correct). Old `_v1` archives are kept for
+> diff-checking; current numbers come from the `_v2` archives below.
+
 ---
 
 ## 1. Dataset (MovieLens-100K, u1 split)
@@ -61,16 +69,16 @@ Citation: `\cite{harper2015movielens}` ([Harper & Konstan 2015]).
 
 ## 3. Ablation matrix (3 fusions × 2 heads × 3 seeds = 18 runs)
 
-`results/2026-04-26_ablations/` — protocol = ablation (patience=10), seeds {42, 43, 44}, ~10 min wall on M1 Pro CPU.
+`results/2026-04-27_ablations_v2/` — protocol = ablation (patience=10), val-driven early stopping, seeds {42, 43, 44}, ~10 min wall on M1 Pro CPU.
 
 | Fusion | Head | RMSE | MAE | Acc | NLL |
 |---|---|---|---|---|---|
-| none | sigmoid | 0.9202 ± 0.0016 | 0.7276 ± 0.0015 | 0.4219 ± 0.0016 | — |
-| none | ordinal | 0.9232 ± 0.0009 | 0.7254 ± 0.0012 | 0.4264 ± 0.0017 | 1.2638 ± 0.0014 |
-| additive | sigmoid | 0.9200 ± 0.0007 | 0.7263 ± 0.0015 | 0.4224 ± 0.0049 | — |
-| additive | ordinal | 0.9168 ± 0.0002 | 0.7174 ± 0.0036 | 0.4319 ± 0.0039 | 1.2576 ± 0.0033 |
-| gated | sigmoid | 0.9127 ± 0.0012 | 0.7186 ± 0.0014 | 0.4279 ± 0.0011 | — |
-| **gated** | **ordinal** | **0.9108 ± 0.0026** | **0.7119 ± 0.0020** | **0.4368 ± 0.0026** | **1.2515 ± 0.0059** |
+| none | sigmoid | 0.9258 ± 0.0004 | 0.7328 ± 0.0002 | 0.4194 ± 0.0002 | — |
+| none | ordinal | 0.9289 ± 0.0006 | 0.7309 ± 0.0008 | 0.4237 ± 0.0015 | 1.2682 ± 0.0031 |
+| additive | sigmoid | 0.9259 ± 0.0004 | 0.7321 ± 0.0004 | 0.4166 ± 0.0002 | — |
+| additive | ordinal | 0.9228 ± 0.0012 | 0.7221 ± 0.0012 | 0.4311 ± 0.0018 | 1.2637 ± 0.0046 |
+| gated | sigmoid | 0.9182 ± 0.0007 | 0.7230 ± 0.0015 | 0.4256 ± 0.0012 | — |
+| **gated** | **ordinal** | **0.9179 ± 0.0029** | **0.7182 ± 0.0032** | **0.4335 ± 0.0014** | **1.2560 ± 0.0007** |
 
 **Bold** row wins all four metrics simultaneously — no metric trade-off.
 
@@ -78,46 +86,46 @@ Citation: `\cite{harper2015movielens}` ([Harper & Konstan 2015]).
 
 | Comparison | ΔRMSE |
 |---|---|
-| gated vs none, sigmoid head | −0.0075 |
-| gated vs none, ordinal head | −0.0124 |
-| gated vs additive, sigmoid head | −0.0073 |
-| gated vs additive, ordinal head | −0.0060 |
-| ordinal vs sigmoid, gated fusion | −0.0019 |
-| ordinal vs sigmoid, additive fusion | −0.0032 |
-| ordinal vs sigmoid, **none** fusion | **+0.0030 (HURTS)** |
+| gated vs none, sigmoid head | −0.0076 |
+| gated vs none, ordinal head | −0.0110 |
+| gated vs additive, sigmoid head | −0.0077 |
+| gated vs additive, ordinal head | −0.0049 |
+| ordinal vs sigmoid, gated fusion | −0.0003 (within noise) |
+| ordinal vs sigmoid, additive fusion | −0.0031 |
+| ordinal vs sigmoid, **none** fusion | **+0.0031 (HURTS)** |
 
-**The +0.0030 row is the interaction effect** — the central novel empirical finding for the Discussion.
+**The interaction effect remains** — ordinal head helps with fusion, hurts without. The "ordinal helps gated" Δ is now within seed noise (0.0003 vs std 0.0029); the ordinal head's contribution under gated fusion shifts to MAE (−0.0048) and accuracy (+0.0079) and the calibrated NLL.
 
 ### Variance check
 
-Max RMSE std across seeds = 0.0026 (gated+ordinal). All cells ≤ 0.0034. Three seeds is statistically sufficient — no need for 5+.
+Max RMSE std across seeds = 0.0029 (gated+ordinal). Three seeds is statistically sufficient.
 
 ---
 
 ## 4. Sensitivity sweep (gated+ordinal only)
 
-`results/2026-04-26_sensitivity/` — protocol = ablation, seeds {42, 43, 44}, 6 unique cells × 3 seeds = 18 runs, ~16 min wall.
+`results/2026-04-27_sensitivity_v2/` — protocol = ablation, val-driven early stopping, seeds {42, 43, 44}, 6 unique cells × 3 seeds = 18 runs.
 
 ### Embedding dimension d (λ held at 1e-5)
 
 | d | RMSE | Wall (s) |
 |---|---|---|
-| 32 | 0.9182 ± 0.0034 | 44.0 |
-| 64 | 0.9153 ± 0.0016 | 46.5 |
-| **128** (default) | **0.9108 ± 0.0026** | 49.0 |
-| 256 | 0.9107 ± 0.0010 | 65.6 (+34%) |
+| 32 | 0.9236 ± 0.0022 | 32.2 |
+| 64 | 0.9207 ± 0.0013 | 35.5 |
+| **128** (default) | **0.9179 ± 0.0029** | 41.2 |
+| 256 | 0.9155 ± 0.0011 | 55.3 (+34%) |
 
-**Knee at d=128.** 256 gives ΔRMSE = 0.0001 at 34% extra wall time — well within seed std.
+**d=256 narrowly beats d=128** by Δ=0.0024 (just outside d=128's seed std 0.0029) at 34% extra wall time. d=128 is still the production choice — Δ comparable to seed noise, but 30% cheaper.
 
 ### Weight decay λ (d held at 128)
 
 | λ | RMSE | Wall (s) |
 |---|---|---|
-| 1e-6 | 0.9129 ± 0.0035 | 43.0 |
-| **1e-5** (default) | **0.9108 ± 0.0026** | 49.0 |
-| 1e-4 | 0.9166 ± 0.0020 | 69.9 |
+| 1e-6 | 0.9197 ± 0.0014 | 38.8 |
+| **1e-5** (default) | **0.9179 ± 0.0029** | 41.2 |
+| 1e-4 | 0.9259 ± 0.0029 | 56.3 |
 
-**U-shape**, optimum at λ=1e-5. Both endpoints worse: 1e-6 underregularises (+0.0021), 1e-4 overregularises (+0.0058).
+**U-shape**, optimum at λ=1e-5. Both endpoints worse: 1e-6 underregularises (+0.0018), 1e-4 overregularises (+0.0080).
 
 ### Hyperparameter defensibility
 
@@ -198,25 +206,25 @@ Embedding budget = 336,000 (82%). Fusion budget = 71,552 (17%). Bias + head = 2,
 
 ## 9. Cold-start / gate-trajectory analysis (Week 4)
 
-`results/2026-04-27_coldstart/` — single seed=42, two trained models (gated+ordinal and additive+ordinal) evaluated on the test set with predictions stratified by user training-set activity |R_u|.
+`results/2026-04-27_coldstart_v2/` — single seed=42, two trained models (gated+ordinal and additive+ordinal) under val-driven early stopping, evaluated on the test set with predictions stratified by user training-set activity |R_u|.
 
 ### Per-bucket findings
 
 | |R_u| bucket | n test ratings | n users | gated RMSE | additive RMSE | Δ (add−gated) | mean g_u | mean g_i |
 |---|---|---|---|---|---|---|---|
-| <30 | 2336 | 172 | 0.9771 | 0.9740 | **−0.003** | 0.243 | 0.319 |
-| 30–59 | 2896 | 107 | 0.9245 | 0.9434 | +0.019 | 0.254 | 0.321 |
-| 60–119 | 6096 | 95 | 0.8866 | 0.8999 | +0.013 | 0.258 | 0.320 |
-| 120–239 | 6765 | 69 | 0.8891 | 0.8959 | +0.007 | 0.270 | 0.321 |
-| ≥240 | 1907 | 16 | 0.9319 | 0.9321 | +0.000 | 0.270 | 0.319 |
+| <30 | 2717 | 189 | 0.9799 | 0.9803 | +0.0004 | 0.246 | 0.316 |
+| 30–59 | 3441 | 108 | 0.9649 | 0.9768 | +0.012 | 0.256 | 0.317 |
+| 60–119 | 5846 | 89 | 0.8841 | 0.8929 | +0.009 | 0.263 | 0.316 |
+| 120–239 | 6350 | 59 | 0.8896 | 0.8946 | +0.005 | 0.268 | 0.317 |
+| ≥240 | 1646 | 14 | 0.9200 | 0.9128 | **−0.007** | 0.291 | 0.316 |
 
 ### Three findings (write into §4.6)
 
-1. **Gates are stable across activity, not trajectory-shaped.** g_u varies between 0.243 and 0.270 (range 0.027); g_i barely moves (0.319 → 0.321). Both gates settle below the zero-init value of 0.5, indicating training prefers the ID-embedding pathway (~70–75% user, ~68% item) — but the bias is roughly *constant* regardless of |R_u|. The naive "gate closes with data" hypothesis is wrong.
+1. **The user-side gate OPENS modestly with activity** (g_u: 0.246 → 0.291, +18% over the activity range). g_i is essentially flat at 0.316. The naive "gate closes with data" intuition is wrong: more user data → user-side gate opens slightly to mix in more side info. Both gates remain well below 0.5, so the ID-embedding pathway dominates throughout.
 
-2. **Cold-start anomaly: additive narrowly beats gated for users with <30 ratings** (Δ = −0.003). The gate's expressiveness becomes a liability when it hasn't received enough joint training signal; additive's hard-coded summation is more robust at the cold tail.
+2. **The sign flip is now on power users**, not the cold tail. Additive narrowly beats gated for users with ≥240 training ratings (Δ = −0.007). The cold tail is essentially tied (Δ = +0.0004). For very active users, the ID embedding alone carries enough signal that mixing in the side-info projection through the gate appears to introduce variance without information.
 
-3. **Gated's advantage concentrates in the mid-activity range (30–240 ratings).** Peak Δ = +0.019 RMSE at 30–59 ratings/user. Power users (≥240) tie because the ID embedding alone is sufficient.
+3. **Gated's advantage concentrates in the mid-activity range (30–239 ratings).** Peak Δ = +0.012 RMSE at 30–59 ratings/user, decaying monotonically toward zero through the population middle.
 
 ### Bonus finding
 
@@ -230,20 +238,20 @@ Embedding budget = 336,000 (82%). Fusion budget = 71,552 (17%). Bias + head = 2,
 
 ## 10. Embedding visualisation (Week 4)
 
-`results/2026-04-27_viz/` — single seed=42 gated+ordinal model, ~52 s training, IsoMap k=15 neighbours, balanced subsets ≈196 of each entity.
+`results/2026-04-27_viz_v2/` — single seed=42 gated+ordinal model under val-driven early stopping (RMSE 0.9165), ~42 s training, IsoMap k=15 neighbours, balanced subsets ≈196 of each entity.
 
 ### Silhouette scores
 
 | Entity | High-D ($d$=128) | 2D PCA | 2D MDS | 2D IsoMap |
 |---|---|---|---|---|
-| $p'_u$ by occupation (top-6 + rest) | **+0.0946** | −0.100 | −0.096 | −0.101 |
-| $q'_i$ by dominant genre (top-6 + rest) | **+0.1925** | +0.068 | +0.124 | **+0.242** |
+| $p'_u$ by occupation (top-6 + rest) | **+0.0848** | −0.107 | −0.103 | −0.114 |
+| $q'_i$ by dominant genre (top-6 + rest) | **+0.1930** | +0.048 | +0.137 | **+0.232** |
 
 ### Findings (write into §4.5 and Discussion)
 
 1. **Both entities carry positive HD silhouette**: side-info structure has been learned without any auxiliary classification objective. Item structure (~0.193) is roughly 2× user structure (~0.095), consistent with multi-hot genre features and more items per category.
 
-2. **Item-side genre is curved, not linear**. PCA captures only 0.068 (~28% of HD); IsoMap with k=15 neighbours captures 0.242 (~125% of HD — extra structure surfaces in 2D because the geodesic projection separates clusters that are linearly tangled). **3.5× ratio between IsoMap and PCA is the headline geometry-diagnostic claim.**
+2. **Item-side genre is curved, not linear**. PCA captures only 0.048 (~25% of HD); IsoMap with k=15 neighbours captures 0.232 (~120% of HD — extra structure surfaces in 2D because the geodesic projection separates clusters that are linearly tangled). **~5× ratio between IsoMap and PCA is the headline geometry-diagnostic claim.**
 
 3. **User-side occupation does not project linearly**: all three 2D methods give negative silhouette despite positive HD. The user gate distributes occupation information across many embedding dimensions; there is no two-dimensional summary.
 
