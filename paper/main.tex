@@ -219,12 +219,13 @@ RMSE by $0.0094$ over the no-fusion baseline (\emph{none}+sigmoid, our
 analogue of plain MF), by $0.0073$ over additive fusion under either head, and
 by $0.0019$ over the same fusion under the previous-cohort sigmoid head.
 
-\begin{table}[h]
+\begin{table}[ht]
 \centering
 \caption{Ablation matrix on MovieLens-100K (u1 split). Mean $\pm$ std over
 seeds $\{42,43,44\}$. Bold = best per column. Lower is better for RMSE/MAE/NLL,
 higher for Accuracy.}
 \label{tab:ablation}
+\resizebox{\linewidth}{!}{%
 \begin{tabular}{llcccc}
 \toprule
 Fusion & Head & RMSE & MAE & Accuracy & NLL \\
@@ -236,7 +237,8 @@ additive  & ordinal & $0.9168\pm0.0002$ & $0.7174\pm0.0036$ & $0.4319\pm0.0039$ 
 gated     & sigmoid & $0.9127\pm0.0012$ & $0.7186\pm0.0014$ & $0.4279\pm0.0011$ & --- \\
 \textbf{gated} & \textbf{ordinal} & $\mathbf{0.9108\pm0.0026}$ & $\mathbf{0.7119\pm0.0020}$ & $\mathbf{0.4368\pm0.0026}$ & $\mathbf{1.2515\pm0.0059}$ \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table}
 
 \subsection{Ablation study}
@@ -275,9 +277,9 @@ classical U-shape, with the chosen default $\lambda=10^{-5}$ at the optimum.
 We did not tune hyperparameters post hoc; both defaults sit at the empirical
 optimum of their respective sweeps.
 
-\begin{figure}[h]
+\begin{figure}[ht]
 \centering
-\includegraphics[width=0.95\linewidth]{../results/2026-04-26_sensitivity/sensitivity_curves.png}
+\includegraphics[width=0.95\linewidth]{figures/sensitivity_curves.png}
 \caption{Sensitivity of test RMSE to embedding dimension $d$ (left) and weight
 decay $\lambda$ (right) on the gated$+$ordinal configuration. Error bars are
 $\pm 1$ std over three seeds.}
