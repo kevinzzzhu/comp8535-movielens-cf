@@ -84,10 +84,10 @@ Goal: defensible numbers + ablation table justifying each design choice.
 
 Goal: second experimental axis — makes the paper richer than one table.
 
-- [ ] Implement IsoMap, PCA, MDS projections on learned `{q'ᵢ}` and `{p'ᵤ}`
-- [ ] Sample 100 movies (balanced across genres) and 100 users (balanced across occupations)
-- [ ] Compute silhouette score (genre / occupation) for PCA vs MDS vs IsoMap
-- [ ] Produce Figure 1 (movie embeddings) + Figure 2 (user embeddings) — 2×3 grid or side-by-side comparison
+- [x] Implement IsoMap, PCA, MDS projections on learned `{q'ᵢ}` and `{p'ᵤ}` (2026-04-27, `scripts/run_visualization.py`)
+- [x] Sample ≈200 movies + ≈200 users balanced across top-6 categories ("rest" bucket for the rest); the 100/100 target was bumped to 200/200 for stable silhouette scores
+- [x] Compute silhouette score (genre / occupation) for PCA vs MDS vs IsoMap — see `results/2026-04-27_viz/silhouette_scores.csv`. **Headline: item-side IsoMap 2D silhouette 0.242 vs PCA 0.068 (3.5× ratio).**
+- [x] Produce 2×3 manifold grid figure (rows: users / items, cols: PCA / MDS / IsoMap), wired into `paper/main.tex` §4.5 (commit pending)
 - [ ] **Cold-start experiment**
   - [ ] Mask 90% of ratings for a held-out 10% of users
   - [ ] Compare `additive` vs `gated` fusion RMSE on cold users
@@ -319,3 +319,35 @@ Frame the contribution as **an integration study with a calibration claim and a 
 - Move sensitivity table to Appendix A if page count is tight; keep only the figure in main text.
 
 **Cross-check vs ablation matrix**: gated+ordinal RMSE in this sweep at (d=128, λ=1e-5) = 0.9108 ± 0.0026. Ablation matrix gave 0.9108 ± 0.0026. Identical, as expected — they share the same seeds and config. Reproducibility ✓.
+
+---
+
+### 2026-04-27 · Week 4 embedding visualisation (PCA / MDS / IsoMap)
+
+**Run**: `scripts/run_visualization.py`, single seed=42 gated+ordinal model, ~52 s training, IsoMap k=15 neighbours, balanced subsets of 196 users / 196 items. Archived to `results/2026-04-27_viz/`.
+
+**Setup**: extracted post-fusion embeddings $p'_u$ and $q'_i$ for the full population (943 users, 1682 items) by passing the full embedding tables through the trained gated-fusion modules. Sampled balanced subsets of the 6 most common occupations (users) and 6 most common dominant genres (items), with a "(rest)" bucket for the long tail. Coloured 2D scatter + silhouette score with respect to those categorical labels.
+
+**Silhouette scores**:
+
+| Entity | HD ($d$=128) | 2D PCA | 2D MDS | 2D IsoMap |
+|---|---|---|---|---|
+| $p'_u$ by occupation | +0.0946 | −0.100 | −0.096 | −0.101 |
+| $q'_i$ by dominant genre | +0.1925 | +0.068 | +0.124 | **+0.242** |
+
+**Findings**:
+
+1. **Both entities carry positive HD silhouette**: side-info structure was learned without any auxiliary classification objective. Item structure (~0.193) ~2× user structure (~0.095).
+
+2. **IsoMap recovers item-side genre structure 3.5× better than PCA** (0.242 vs 0.068). Linear methods systematically underestimate the manifold quality of the learned item embeddings. This is the headline geometry-diagnostic claim of the paper, and it directly supports the "transparent linear core + nonlinear projection diagnostic" framing from the 2026-04-21 novelty audit.
+
+3. **User-side occupation does not survive 2D projection**: all three methods give negative silhouette despite positive HD. The user gate distributes occupation information across many dimensions; no two-dimensional summary captures it.
+
+**Method note (worth a footnote in §4.5)**: default IsoMap `n_neighbors=10` produced a disconnected neighbourhood graph and a weaker item silhouette of 0.077. Bumping to k=15 connected the graph and recovered 0.242. The dependence on `k` is real and worth disclosing.
+
+**Paper implication**:
+- §4.5 written with figure (`paper/figures/manifold_grid.png`, 2×3 panel) and silhouette table. Paper now compiles to **7 pages** including refs.
+- Conclusion sentence added on geometry diagnostic.
+- Abstract bumped to mention 2-D IsoMap silhouette 0.24 / PCA 0.07.
+
+**Pending follow-up**: cold-start experiment (mask 90% ratings for 10% of users; plot mean gate vs |R_u|; compare additive-vs-gated cold-user RMSE). 3h. Optional — not required to land Week 4.

@@ -1,0 +1,7 @@
+entity,method,silhouette_hd,silhouette_2d,n_samples,n_classes
+user,pca,0.0946,-0.0999,196,7
+item,pca,0.1925,0.0684,196,7
+user,mds,0.0946,-0.0962,196,7
+item,mds,0.1925,0.1243,196,7
+user,isomap,0.0946,-0.1012,196,7
+item,isomap,0.1925,0.2420,196,7

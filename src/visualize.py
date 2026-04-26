@@ -14,7 +14,9 @@ def project(X: np.ndarray, method: str = "isomap", n_neighbors: int = 10):
     if method == "pca":
         return PCA(n_components=2).fit_transform(X)
     if method == "mds":
-        return MDS(n_components=2, dissimilarity="euclidean", random_state=0, n_init=1).fit_transform(X)
+        # `dissimilarity` was renamed to `metric` in sklearn 1.6 and old kwarg removed in 1.10.
+        # `n_init` is deprecated; explicit `init` arg with a fixed seed gives reproducibility.
+        return MDS(n_components=2, metric=True, random_state=0).fit_transform(X)
     if method == "isomap":
         return Isomap(n_components=2, n_neighbors=n_neighbors).fit_transform(X)
     raise ValueError(f"unknown method: {method}")

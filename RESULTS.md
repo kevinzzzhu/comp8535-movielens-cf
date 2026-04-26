@@ -196,21 +196,49 @@ Embedding budget = 336,000 (82%). Fusion budget = 71,552 (17%). Bias + head = 2,
 
 ---
 
-## 9. Outstanding writing tasks
+## 9. Embedding visualisation (Week 4)
+
+`results/2026-04-27_viz/` — single seed=42 gated+ordinal model, ~52 s training, IsoMap k=15 neighbours, balanced subsets ≈196 of each entity.
+
+### Silhouette scores
+
+| Entity | High-D ($d$=128) | 2D PCA | 2D MDS | 2D IsoMap |
+|---|---|---|---|---|
+| $p'_u$ by occupation (top-6 + rest) | **+0.0946** | −0.100 | −0.096 | −0.101 |
+| $q'_i$ by dominant genre (top-6 + rest) | **+0.1925** | +0.068 | +0.124 | **+0.242** |
+
+### Findings (write into §4.5 and Discussion)
+
+1. **Both entities carry positive HD silhouette**: side-info structure has been learned without any auxiliary classification objective. Item structure (~0.193) is roughly 2× user structure (~0.095), consistent with multi-hot genre features and more items per category.
+
+2. **Item-side genre is curved, not linear**. PCA captures only 0.068 (~28% of HD); IsoMap with k=15 neighbours captures 0.242 (~125% of HD — extra structure surfaces in 2D because the geodesic projection separates clusters that are linearly tangled). **3.5× ratio between IsoMap and PCA is the headline geometry-diagnostic claim.**
+
+3. **User-side occupation does not project linearly**: all three 2D methods give negative silhouette despite positive HD. The user gate distributes occupation information across many embedding dimensions; there is no two-dimensional summary.
+
+4. **MDS sits between PCA and IsoMap** (item: 0.124): consistent with classical MDS being equivalent to PCA when distances are Euclidean but more sensitive to local neighbourhoods.
+
+### Method note
+
+Default IsoMap `n_neighbors=10` produced a disconnected neighbourhood graph and a weaker silhouette of 0.077 (item-side). Bumping to 15 connects the graph and recovers the 0.242 figure. Worth a one-line footnote in the Method.
+
+---
+
+## 10. Outstanding writing tasks
 
 | Section | Status | Effort |
 |---|---|---|
-| §0 Abstract | Drafted (~150 words) | tweak after Week 4 figs land |
-| §1 Introduction + Related Work | Drafted | refine after first compile |
+| §0 Abstract | Drafted, includes manifold finding | — |
+| §1 Introduction + Related Work | Drafted | — |
 | §2 Problem Definition | Drafted | — |
 | §3 Method (MF, fusion, ordinal, complexity) | Drafted | — |
 | §4.1 Setup | Drafted | — |
 | §4.2 Baselines and metrics | Drafted | — |
 | §4.3 Results (ablation table) | Drafted with verified numbers | — |
 | §4.4 Ablation study (3 claims) | Drafted | — |
-| §4.5 Embedding visualisation | **TODO** Week 4 | 6h code + 30min writing |
-| §4.6 Discussion | Drafted | revisit after §4.5 |
-| §5 Conclusion | Drafted (1 TODO sentence on viz) | 5min |
+| §4.5 Embedding visualisation | **Drafted** with figure + silhouette table | — |
+| §4.6 Discussion | Drafted | revisit Week 5 |
+| §5 Conclusion | Drafted, includes geometry sentence | — |
+| Cold-start experiment (gate-vs-|R_u| plot) | **TODO** Week 4 | 3h |
 | Appendix: Solo contribution statement | **TODO** Week 5 | 15min |
 
 Every numerical claim in the current draft has been verified against the CSV files cited above.
