@@ -351,6 +351,73 @@ occupation information across many embedding dimensions, while the
 item-side gate concentrates genre information along fewer, locally
 linear directions.
 
+\subsection{Gate behaviour and cold-start regime}
+\label{sec:coldstart}
+A standard intuition for a learned gate is that it should \emph{close} as the
+ID embedding accumulates training signal --- a power user with hundreds of
+observed ratings should rely on the ID embedding alone, while a cold user with
+a handful of ratings should rely on the side-feature projection. We test this
+by stratifying every test prediction by the corresponding user's training
+activity $|R_u|$ into five activity buckets, and measuring the per-bucket mean
+gate value and per-bucket RMSE for both the gated$+$ordinal and
+additive$+$ordinal models (Figure~\ref{fig:coldstart},
+Table~\ref{tab:coldstart}). The activity buckets contain $\{172, 107, 95, 69,
+16\}$ users covering $\{2336, 2896, 6096, 6765, 1907\}$ test ratings.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.49\linewidth]{figures/gate_vs_users.png}\hfill
+\includegraphics[width=0.49\linewidth]{figures/rmse_vs_users.png}
+\caption{Per-bucket cold-start analysis. Left: mean per-prediction gate
+value across user-activity buckets. Both gates settle around $g_u\!\approx\!0.25$
+and $g_i\!\approx\!0.32$, well below the zero-initialisation value of $0.5$,
+and are nearly flat across activity. Right: test RMSE by user-activity
+bucket for the two fusion variants. Gated fusion's advantage concentrates in
+the mid-activity range; cold and power users see no benefit.}
+\label{fig:coldstart}
+\end{figure}
+
+\begin{table}[ht]
+\centering
+\caption{Cold-start RMSE breakdown by user activity. Negative $\Delta$ means
+additive fusion wins on that bucket.}
+\label{tab:coldstart}
+\begin{tabular}{lrrrrr}
+\toprule
+$|R_u|$ bucket & $<\!30$ & $30$--$59$ & $60$--$119$ & $120$--$239$ & $\ge\!240$ \\
+\midrule
+gated RMSE      & $0.9771$ & $0.9245$ & $0.8866$ & $0.8891$ & $0.9319$ \\
+additive RMSE   & $0.9740$ & $0.9434$ & $0.8999$ & $0.8959$ & $0.9321$ \\
+$\Delta$ (add. $-$ gated) & $-0.0030$ & $+0.0188$ & $+0.0132$ & $+0.0067$ & $+0.0002$ \\
+mean $g_u$ & $0.243$ & $0.254$ & $0.258$ & $0.270$ & $0.270$ \\
+mean $g_i$ & $0.319$ & $0.321$ & $0.320$ & $0.321$ & $0.319$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The data refute the naive intuition and produce a sharper finding. First,
+the gates do not move materially with $|R_u|$: $g_u$ varies between $0.243$
+and $0.270$, $g_i$ between $0.319$ and $0.321$. The training objective settles
+the gates to a near-population-constant configuration in which the
+ID-embedding pathway carries roughly $70$--$75\%$ of the user-side signal and
+$\approx\!68\%$ of the item-side signal, regardless of how much per-user
+training data is available. Second, the gated$+$ordinal advantage over
+additive$+$ordinal is concentrated in the mid-activity bucket
+($30$--$59$ ratings, $\Delta=+0.019$ RMSE), shrinks monotonically to zero for
+power users ($\ge\!240$ ratings, $\Delta=+0.0002$), and \emph{flips sign} for
+the coldest users (${<}30$ ratings, $\Delta=-0.003$). For cold users, the
+gating mechanism's flexibility appears to be a liability: with only a handful
+of training ratings the gate has not received enough gradient signal to
+position itself well, and the additive baseline's hard-coded summation is
+empirically more robust. We read this as a small but real cold-start failure
+mode of learned-gating mechanisms in linear-core CF, and a candidate
+explanation for why related papers
+(GATE~\cite{ma2019gate}, OPRFM~\cite{zaman2025oprfm})
+report gating gains that are not uniform across the user population. The
+practical implication is that gated fusion should be reached for
+when the dataset has a healthy mid-tail; in genuinely cold settings, an
+additive (or no-fusion) variant may be the safer default.
+
 \subsection{Discussion}
 The ablation paints a sharper picture than the headline number alone. The
 fusion mechanism does the bulk of the empirical work: gated fusion lifts RMSE
@@ -384,7 +451,13 @@ Manifold projections of the post-fusion embeddings show that item-side genre
 structure is curved and recovered cleanly by IsoMap but missed by PCA, while
 user-side occupation structure resides in too many dimensions to compress to
 two without loss --- a geometry diagnostic that linear visualisations alone
-would not surface.
+would not surface. A cold-start stratification reveals that the gates settle
+to a near-population-constant configuration with no movement across user
+activity, and that gated fusion's advantage over additive fusion is a
+mid-tail phenomenon: it disappears for power users and reverses sign for
+genuinely cold users, suggesting that learned-gating mechanisms in linear-core
+CF should be paired with an additive or no-fusion fallback in low-data
+regimes.
 
 \bibliographystyle{plain}
 \bibliography{refs}
