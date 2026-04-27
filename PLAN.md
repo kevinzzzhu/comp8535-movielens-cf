@@ -409,3 +409,30 @@ Frame the contribution as **an integration study with a calibration claim and a 
 - Paper still compiles to **8 pages**.
 
 **Methodological credibility**: this is the single largest defensibility lift since the BibTeX verification. A reviewer / marker who would have flagged the test-set early stopping as a flaw now finds a clean val/test separation in the codebase and a transparent disclosure paragraph in §4.1.
+
+---
+
+### 2026-04-27 · Multi-split cross-validation (canonical MovieLens-100K protocol)
+
+**Run**: `scripts/run_multisplit.py`, 5 splits × 6 ablation cells × 3 seeds = 90 runs, ~60 min wall on M1 Pro CPU. Resume-on-restart via `results.json` cache. Archived to `results/2026-04-27_multisplit/`.
+
+**Aggregation policy**: for each (fusion, head) cell, we first compute the 5 per-split means (each itself an average over 3 seeds), then report mean ± std *of those 5 per-split means*. This isolates between-split variance, which dominates within-split seed noise on this dataset.
+
+**Headline outcome**: gated+ordinal RMSE **0.9124 ± 0.0036** across the five splits, **better than the u1-only number 0.9179**. u1 turned out to be the *worst* split for our model (per-split RMSE: u1=0.9179, u2=0.9132, u3=0.9082, u4=0.9123, u5=0.9104). The gap to the previous group's 0.9051 narrows from 0.013 (u1-only) to 0.007 (across-split), with between-split std (0.0036) comparable to the gap.
+
+**Variance decomposition**:
+- Within-split (3 seeds): RMSE std ≈ 0.001–0.003.
+- Across splits (5 per-split means): RMSE std ≈ 0.004–0.007 — about 2–3× the within-split noise.
+- Between-split variance is the dominant noise source, justifying the canonical multi-split protocol.
+
+**Within-paper ordering preserved on every individual split**: gated+ordinal wins or ties for first on RMSE, MAE, accuracy, and NLL on each of u1–u5. The ablation findings (gated dominates, ordinal helps with fusion / hurts without) are consistent across splits, with magnitudes attenuated because between-split variance dilutes within-split deltas.
+
+**Paper implication**:
+- §4.1 Setup: replaced "u1 split" with "five canonical splits u1–u5"; visualisation and cold-start sections explicitly noted as u1-only since they require a single trained model.
+- §4.3 main ablation table: now reports across-split mean ± std as headline. Between-split std is larger than within-split (e.g. 0.0036 vs 0.0029) and the right reflection of methodological uncertainty.
+- §4.3, §4.4 narrative deltas updated.
+- §4.7 Discussion: new "Comparison with the previous-cohort baseline" paragraph honestly decomposing the 0.013 u1-gap into (i) ~half u1-cherry-pick artefact, (ii) calibration-tax + val-split discipline.
+- Abstract and Conclusion: 0.9179 → 0.9124, "u1 split" → "five canonical splits".
+- Paper compiles to **9 pages** (was 8). If course page limit ≤ 8, the previous-cohort and limitations paragraphs are the easiest cuts.
+
+**Defensive value**: this is the single biggest credibility lift relative to the previous cohort. They report a single split with no variance estimate. We report mean ± std across five splits with proper val/test separation — the gold-standard reporting for the dataset. Even if the headline RMSE is nominally worse than theirs, the methodology is a different league.
