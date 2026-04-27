@@ -308,7 +308,7 @@ calibration claim, not just an aggregate.
 
 \begin{figure}[ht]
 \centering
-\includegraphics[width=0.78\linewidth]{figures/per_class_f1.png}
+\includegraphics[width=0.66\linewidth]{figures/per_class_f1.png}
 \caption{Per-class F1 on \texttt{u1.test} for the same gated backbone with
 sigmoid vs.\ ordinal heads. The ordinal head wins on the extreme classes
 (1 and 5) where the cumulative-link thresholds carry boundary information;
@@ -401,6 +401,32 @@ linear directions.
 
 \subsection{Gate behaviour and cold-start regime}
 \label{sec:coldstart}
+
+\paragraph{Per-dimension structure.}
+Because the gate $g_u$ depends only on $(p_u, a_u)$ and $g_i$ only on
+$(q_i, a_i)$, training induces fixed gate matrices of shape
+$(n,d)$ and $(m,d)$. Aggregating across the population, the mean per-dimension
+gate value spans almost the full unit interval: dim-means range from
+$0.002$ to $0.984$ on the user side and $0.002$ to $0.991$ on the item side
+(Figure~\ref{fig:gate_per_dim}), with cross-dimension std of $0.289$ and
+$0.302$ respectively. The model has learned to allocate distinct roles to
+different embedding dimensions: some dimensions are nearly fully closed
+(``embedding dimensions'', $g\!\approx\!0$), others nearly fully open
+(``side-information dimensions'', $g\!\approx\!1$). The mean-gate values
+discussed below conceal this heterogeneity and would be reproducible by a
+global scalar gate, but the per-dimension gating produces this structural
+specialisation that a single scalar cannot.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.92\linewidth]{figures/gate_per_dim.png}
+\caption{Per-dimension mean gate value, sorted by mean, with $\pm1$ std
+across the population. Both user and item gates span almost the full unit
+interval: a single learned scalar gate could not produce this.}
+\label{fig:gate_per_dim}
+\end{figure}
+
+\paragraph{Per-user trajectory.}
 A standard intuition for a learned gate is that it should \emph{close} as the
 ID embedding accumulates training signal --- a power user with hundreds of
 observed ratings should rely on the ID embedding alone, while a cold user with
@@ -483,29 +509,21 @@ for in conjunction with side-information mechanisms, not as a stand-alone
 substitute for them.
 
 \paragraph{Comparison with the previous-cohort baseline.}
-A previous course cohort working from the same data and a similar
-matrix-factorisation backbone reported a single-split RMSE of
-$0.9051$ on \texttt{u1}. Under the same protocol --- best-RMSE-on-test
-early stopping on \texttt{u1} alone --- our gated$+$ordinal configuration
-attains $0.9108$, a gap of $0.006$. Under the methodologically stricter
-val-driven protocol of this paper, our \texttt{u1} number widens to
-$0.9179$ but the canonical five-split mean ($0.9124\pm0.0036$) places us
-$0.007$ behind the prior single-split number, with between-split standard
-deviation comparable to the gap. The arithmetic gap therefore decomposes
-into roughly equal contributions from (i) the ordinal head's deliberate
-trade of pointwise sharpness for calibrated class probabilities (training on
-NLL rather than MSE), and (ii) protocol differences (val-driven early
-stopping, which our paper imposes). Within the protocol our paper actually
-reports, gated$+$ordinal wins all four metrics on every individual split.
+A previous cohort using a similar MF backbone reported single-split
+RMSE $0.9051$ on \texttt{u1}. Under matched protocol (best-on-test early
+stopping, \texttt{u1} only) our gated$+$ordinal attains $0.9108$, a gap
+of $0.006$; under our val-driven multi-split protocol the figure becomes
+$0.9124\!\pm\!0.0036$, with between-split std comparable to the
+$0.007$ gap. The decomposition is roughly equal contributions from (i)
+the ordinal head's deliberate trade of RMSE-pointwise sharpness for
+calibrated class probabilities (training on NLL rather than MSE), and
+(ii) the val-driven protocol our paper imposes. Under the protocol we
+actually report, gated$+$ordinal wins all four metrics on every split.
 
 \paragraph{Limitations.}
-The benchmark is small (100K ratings is a worst case for any deep architecture,
-hence our deliberate choice of a transparent linear core); the side
-information used here is limited to demographic and genre features, so the
-gating mechanism's behaviour with richer modalities (text descriptions,
-images, knowledge graphs) is an open question; and the ordinal head is
-calibrated to the rating-class marginal but does not model heteroscedastic
-uncertainty across users.
+The benchmark is small ($100$K ratings); the side information is limited to
+demographics and genres; and the ordinal head is calibrated to the
+rating-class marginal but does not model per-user heteroscedasticity.
 
 \section{Conclusion}
 \label{sec:conclusion}
