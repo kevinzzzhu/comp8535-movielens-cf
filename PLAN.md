@@ -436,3 +436,28 @@ Frame the contribution as **an integration study with a calibration claim and a 
 - Paper compiles to **9 pages** (was 8). If course page limit ≤ 8, the previous-cohort and limitations paragraphs are the easiest cuts.
 
 **Defensive value**: this is the single biggest credibility lift relative to the previous cohort. They report a single split with no variance estimate. We report mean ± std across five splits with proper val/test separation — the gold-standard reporting for the dataset. Even if the headline RMSE is nominally worse than theirs, the methodology is a different league.
+
+---
+
+### 2026-04-27 · Per-class confusion matrix and F1
+
+**Run**: `scripts/run_classmetrics.py`, single seed=42 on u1, two trained models (gated+ordinal and gated+sigmoid), predictions rounded to {1..5} and compared per-class. Archived to `results/2026-04-27_classmetrics/`.
+
+**Headline**: macro-F1 lifts from $0.341$ (sigmoid) to $0.369$ (ordinal), $\Delta=+0.028$ (~$+8\%$ relative). The gain is concentrated on the boundary classes:
+
+| Class | Support | F1 ord | F1 sig | $\Delta$ | recall ord vs sig |
+|---|---|---|---|---|---|
+| 1 | 1391 | 0.279 | 0.181 | **+0.098 (+54% rel.)** | 0.169 vs 0.102 |
+| 2 | 2192 | 0.266 | 0.268 | −0.002 | — |
+| 3 | 5182 | 0.439 | 0.424 | +0.015 | — |
+| 4 | 6778 | 0.513 | 0.521 | −0.008 | — |
+| 5 | 4457 | 0.348 | 0.313 | **+0.035 (+11% rel.)** | 0.235 vs 0.204 |
+
+**Interpretation**: sigmoid+MSE biases predictions toward the centre of the rating range (class-4 recall 0.66 is its highest, class-1 recall 0.10 is its lowest). The cumulative-link parameterisation explicitly carries per-boundary thresholds and recovers $\sim\!\!67\%$ more class-1 ratings and $\sim\!\!15\%$ more class-5 ratings. This is the per-class footprint of the calibration claim — the ordinal head's RMSE benefit is noise-level on gated fusion, but its *classification* benefit is concentrated and structural.
+
+**Paper implication**:
+- §4.4 added paragraph "Where the ordinal head wins: extreme classes." with the `per_class_f1.png` bar chart.
+- The confusion-matrix figure (`confusion_grid.png`) is in the archive but not in the main paper, to save page space (already at 9 pages).
+- Macro-F1 gain of +0.028 strengthens the "ordinal head buys per-class accuracy" claim that previously rested on aggregate Acc (+0.009 on gated) and NLL.
+
+**Tier 1 status**: COMPLETE (cold-start ✓, val split ✓, multi-split CV ✓, per-class F1 ✓). The four high-value methodological lifts identified in the 2026-04-27 strategic review are all landed.

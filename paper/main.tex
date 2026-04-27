@@ -290,6 +290,32 @@ $\log 5\approx1.609$ uniform baseline; even the worst ordinal cell
 initialisation is the mechanism: the predicted marginal matches the data
 marginal at $s=0$ to numerical precision ($<10^{-7}$ in unit tests).
 
+\paragraph{Where the ordinal head wins: extreme classes.}
+The aggregate accuracy and NLL numbers conceal a sharper mechanistic claim.
+Figure~\ref{fig:per_class_f1} reports per-class F1 on \texttt{u1.test} for
+the gated$+$sigmoid and gated$+$ordinal heads on the same backbone. The
+ordinal head wins on the boundary classes: $+0.098$ F1 on class~1
+(a $54\%$ relative improvement) and $+0.035$ F1 on class~5; classes
+2--4 are within $\pm 0.015$ of each other. Macro-F1 lifts from $0.341$
+(sigmoid) to $0.369$ (ordinal), a $+8\%$ relative gain driven almost
+entirely by recall on classes 1 and 5 (class-1 recall $0.169$ vs $0.102$;
+class-5 recall $0.235$ vs $0.204$). The sigmoid head trained with MSE
+biases predictions toward the middle of the rating range; the
+cumulative-link parameterisation explicitly carries thresholds for each
+class boundary, and uses them to recover ratings the sigmoid head rounds
+back into class~3 or class~4. This is the per-class footprint of the
+calibration claim, not just an aggregate.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.78\linewidth]{figures/per_class_f1.png}
+\caption{Per-class F1 on \texttt{u1.test} for the same gated backbone with
+sigmoid vs.\ ordinal heads. The ordinal head wins on the extreme classes
+(1 and 5) where the cumulative-link thresholds carry boundary information;
+classes 2--4 are within seed-level noise.}
+\label{fig:per_class_f1}
+\end{figure}
+
 Figure~\ref{fig:sens} shows the sensitivity sweep over the embedding dimension
 $d$ and the weight-decay coefficient $\lambda$, with all other settings held
 at the defaults of Section~\ref{sec:exp}. The $d$-curve is monotone with sharp

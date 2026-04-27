@@ -222,7 +222,41 @@ Embedding budget = 336,000 (82%). Fusion budget = 71,552 (17%). Bias + head = 2,
 
 ---
 
-## 9. Cold-start / gate-trajectory analysis (Week 4)
+## 9. Per-class confusion / F1 (Week 4)
+
+`results/2026-04-27_classmetrics/` — single seed=42, two trained models (gated+ordinal and gated+sigmoid) on u1, predictions rounded to {1,…,5} and compared per-class.
+
+### Per-class F1
+
+| Class | Support | F1 ordinal | F1 sigmoid | ΔF1 |
+|---|---|---|---|---|
+| **1 (lowest)** | 1391 | **0.279** | 0.181 | **+0.098 (+54% rel.)** |
+| 2 | 2192 | 0.266 | 0.268 | −0.002 |
+| 3 | 5182 | 0.439 | 0.424 | +0.015 |
+| 4 | 6778 | 0.513 | 0.521 | −0.008 |
+| **5 (highest)** | 4457 | **0.348** | 0.313 | **+0.035 (+11% rel.)** |
+
+**Macro-F1: ordinal 0.369 vs sigmoid 0.341, Δ = +0.028 (+8% relative).**
+
+### Mechanism
+
+Per-class recall reveals the structural difference between the two heads:
+
+| Class | Recall ordinal | Recall sigmoid |
+|---|---|---|
+| 1 | 0.169 | 0.102 |
+| 4 | 0.632 | 0.662 |
+| 5 | 0.235 | 0.204 |
+
+The sigmoid+MSE head biases predictions toward the centre of the rating range (high class-4 recall, low extremal recall). The ordinal head's cumulative-link thresholds explicitly model the boundary between adjacent classes, and recover ratings that sigmoid rounds back into the middle. This is the per-class footprint of the calibration claim — not just an aggregate NLL win, but a concrete per-class story.
+
+### Paper implication
+
+Added §4.4 paragraph "Where the ordinal head wins: extreme classes." with `paper/figures/per_class_f1.png` figure (bar chart, side-by-side per-class F1). Confusion-matrix figure (`confusion_grid.png`) kept in archive but not in main paper to save page space.
+
+---
+
+## 10. Cold-start / gate-trajectory analysis (Week 4)
 
 `results/2026-04-27_coldstart_v2/` — single seed=42, two trained models (gated+ordinal and additive+ordinal) under val-driven early stopping, evaluated on the test set with predictions stratified by user training-set activity |R_u|.
 
@@ -254,7 +288,7 @@ Embedding budget = 336,000 (82%). Fusion budget = 71,552 (17%). Bias + head = 2,
 
 ---
 
-## 10. Embedding visualisation (Week 4)
+## 11. Embedding visualisation (Week 4)
 
 `results/2026-04-27_viz_v2/` — single seed=42 gated+ordinal model under val-driven early stopping (RMSE 0.9165), ~42 s training, IsoMap k=15 neighbours, balanced subsets ≈196 of each entity.
 
@@ -281,7 +315,7 @@ Default IsoMap `n_neighbors=10` produced a disconnected neighbourhood graph and 
 
 ---
 
-## 10. Outstanding writing tasks
+## 12. Outstanding writing tasks
 
 | Section | Status | Effort |
 |---|---|---|
@@ -303,7 +337,7 @@ Every numerical claim in the current draft has been verified against the CSV fil
 
 ---
 
-## 10. Open follow-ups (post-Week 3)
+## 13. Open follow-ups (post-Week 3)
 
 1. **Week 4**: implement IsoMap / t-SNE / UMAP on learned `q_i` and `p_u`; stratified silhouette by genre / occupation; cold-start experiment (mask 90% of ratings for 10% of users; plot mean gate vs |R_u|).
 2. **Week 5**: held-out validation split for proper early stopping (currently best-RMSE-on-test as a workaround — defensible but worth flagging in Limitations).
