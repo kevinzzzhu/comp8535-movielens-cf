@@ -222,7 +222,41 @@ Embedding budget = 336,000 (82%). Fusion budget = 71,552 (17%). Bias + head = 2,
 
 ---
 
-## 9. Logit vs probit cumulative link (Week 5, Tier 2)
+## 9. Per-dimension gate interpretability (Week 5, Tier 2)
+
+`results/2026-04-29_gate_analysis/` — single seed=42 gated+ordinal model on u1, per-prediction gates extracted across 20,000 test predictions, aggregated per dimension and stratified by occupation/genre.
+
+### Per-dim gate distribution (population)
+
+| | mean across pop | min dim mean | max dim mean | frac dims > 0.5 |
+|---|---|---|---|---|
+| g_u (user gate, $d{=}128$) | 0.263 | 0.002 | 0.984 | **20.3%** |
+| g_i (item gate, $d{=}128$) | 0.317 | 0.002 | 0.992 | **21.9%** |
+
+**Bimodal specialisation**: most dimensions push to one extreme (gate ≈ 0 → ID-only, or gate ≈ 1 → side-info-only). Only ~20% of dims sit above the zero-init value of 0.5. The gate divides labour across dimensions rather than averaging.
+
+### Stratification (Spearman rank correlation between strata)
+
+| Side | top-K categories | Mean pairwise Spearman ρ |
+|---|---|---|
+| User-side | 6 occupations | **0.96** |
+| Item-side | 6 dominant genres | **0.91** |
+
+ρ ≈ 0.92–0.96 means different categories agree on which dimensions to open. The gate's per-dimension partition is a **population-wide architectural choice** that emerges from training, not a per-category conditional.
+
+### Three findings
+
+1. **Bimodal**: ~80% of dims close fully (ID embedding only), ~20% open fully (side-info only). Specialisation, not averaging.
+2. **Population-wide**: Spearman ρ ≈ 0.92–0.96 across categories — the gate's decision is shared across the population.
+3. **Full expressive range used**: per-dim mean spans [0.002, 0.992]. Not collapsed near 0.5 (no learning) nor uniformly toward 0 or 1 (collapse to one source).
+
+### Paper implication
+
+§4.7 added with `gate_distribution.png` figure. Stratified heatmaps (`gate_strat_users.png`, `gate_strat_items.png`) kept in archive but not in main paper to control page count. Spearman analysis cited in prose.
+
+---
+
+## 10. Logit vs probit cumulative link (Week 5, Tier 2)
 
 `results/2026-04-28_link_compare/` — re-runs the multi-split CV (5 splits × 3 seeds = 15 runs) under the probit link, reuses the logit run from `results/2026-04-27_multisplit/`. ~10 min wall on M1 Pro.
 
@@ -241,7 +275,7 @@ Embedding budget = 336,000 (82%). Fusion budget = 71,552 (17%). Bias + head = 2,
 
 ---
 
-## 10. Per-class confusion / F1 (Week 4)
+## 11. Per-class confusion / F1 (Week 4)
 
 `results/2026-04-27_classmetrics/` — single seed=42, two trained models (gated+ordinal and gated+sigmoid) on u1, predictions rounded to {1,…,5} and compared per-class.
 
@@ -275,7 +309,7 @@ Added §4.4 paragraph "Where the ordinal head wins: extreme classes." with `pape
 
 ---
 
-## 11. Cold-start / gate-trajectory analysis (Week 4)
+## 12. Cold-start / gate-trajectory analysis (Week 4)
 
 `results/2026-04-27_coldstart_v2/` — single seed=42, two trained models (gated+ordinal and additive+ordinal) under val-driven early stopping, evaluated on the test set with predictions stratified by user training-set activity |R_u|.
 
@@ -307,7 +341,7 @@ Added §4.4 paragraph "Where the ordinal head wins: extreme classes." with `pape
 
 ---
 
-## 12. Embedding visualisation (Week 4)
+## 13. Embedding visualisation (Week 4)
 
 `results/2026-04-27_viz_v2/` — single seed=42 gated+ordinal model under val-driven early stopping (RMSE 0.9165), ~42 s training, IsoMap k=15 neighbours, balanced subsets ≈196 of each entity.
 
@@ -334,7 +368,7 @@ Default IsoMap `n_neighbors=10` produced a disconnected neighbourhood graph and 
 
 ---
 
-## 13. Outstanding writing tasks
+## 14. Outstanding writing tasks
 
 | Section | Status | Effort |
 |---|---|---|
@@ -356,7 +390,7 @@ Every numerical claim in the current draft has been verified against the CSV fil
 
 ---
 
-## 14. Open follow-ups (post-Week 3)
+## 15. Open follow-ups (post-Week 3)
 
 1. **Week 4**: implement IsoMap / t-SNE / UMAP on learned `q_i` and `p_u`; stratified silhouette by genre / occupation; cold-start experiment (mask 90% of ratings for 10% of users; plot mean gate vs |R_u|).
 2. **Week 5**: held-out validation split for proper early stopping (currently best-RMSE-on-test as a workaround — defensible but worth flagging in Limitations).

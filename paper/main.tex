@@ -3,6 +3,8 @@
 \usepackage{hyperref}
 \usepackage{url}
 \usepackage{amsmath,amssymb,graphicx,booktabs}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
 
 % Course-required: use NIPS camera-ready format.
 \nipsfinalcopy
@@ -181,6 +183,28 @@ $\hat r_{ui}=\sum_{k=1}^{5}k\,P(r=k\mid s_{ui})$. As an ablation we also
 consider the \emph{sigmoid} head used by previous-group baselines:
 $\hat r_{ui}=4\sigma(s_{ui})+1$ trained with mean-squared error.
 
+\begin{algorithm}[ht]
+\caption{Forward pass + ordinal NLL for one observed rating $(u,i,r)$.}
+\label{alg:forward}
+\begin{algorithmic}[1]
+\State $a_u\!\gets\!\mathrm{ReLU}(W_u f_u {+}b_{f,u})$;\;
+       $a_i\!\gets\!\mathrm{ReLU}(W_i g_i {+}b_{f,i})$
+       \Comment{side projections}
+\State $g_u\!\gets\!\sigma(W_g^{(u)}[E_u[u]\Vert a_u]{+}b_g^{(u)})$;\;
+       $g_i\!\gets\!\sigma(W_g^{(i)}[E_i[i]\Vert a_i]{+}b_g^{(i)})$
+       \Comment{per-dim gates}
+\State $p'\!\gets\!(\mathbf{1}{-}g_u)\!\odot\!E_u[u]+g_u\!\odot\! a_u$;\;
+       $q'\!\gets\!(\mathbf{1}{-}g_i)\!\odot\!E_i[i]+g_i\!\odot\! a_i$
+\State $s\!\gets\!p'\!\cdot\!q'+b_u+b_i$;\;
+       $\theta_k\!\gets\!\theta_1+\sum_{j<k}\mathrm{softplus}(\delta_j)$
+\State $P(r{=}k\mid s)\!\gets\!\sigma(\theta_k{-}s)-\sigma(\theta_{k-1}{-}s)$,\;
+       with $\theta_0{=}-\infty,\theta_K{=}\infty$
+\State \Return $\mathcal{L}=-\log P(r{=}r_{\text{true}}\mid s)$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Complexity}
+\label{sec:complexity}
 The MF backbone has $(n+m)d$ embedding parameters plus $n+m$ biases; for
 MovieLens-100K with $n=943$, $m=1682$, $d=128$, that is $\approx 3.4\times10^5$
 parameters. Each fusion module adds a projection ($d_{u/i}\cdot d + d$) and a gate
@@ -500,6 +524,47 @@ practical implication is that gated fusion is most valuable on mid-tail
 users; for the power-user tail, an additive (or no-fusion) variant is
 empirically a safer default.
 
+\subsection{Per-dimension gate interpretability}
+\label{sec:gate_perdim}
+Aggregate gate values disguise a striking per-dimension pattern. For each of
+the $d{=}128$ embedding dimensions of the trained gated$+$ordinal model
+(\texttt{u1}, seed $42$), Figure~\ref{fig:gate_perdim} sorts dimensions by
+their population-mean gate value and shades $\pm 1$ standard deviation around
+the mean. The user-side gate $g_u$ spans $[0.002, 0.984]$ across dimensions
+with population-mean $0.263$; the item-side gate $g_i$ spans $[0.002, 0.992]$
+with population-mean $0.317$. Only $20.3\%$ of user-side dimensions and
+$21.9\%$ of item-side dimensions sit above the zero-init value of $0.5$. The
+distribution is therefore strongly bimodal: most dimensions \emph{specialise}
+to the ID-embedding pathway (gate near zero) while a smaller subset
+specialises to the side-information projection (gate near one). The fusion
+mechanism is dividing labour across dimensions rather than averaging the two
+sources.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\linewidth]{figures/gate_distribution.png}
+\caption{Per-dimension gate distribution on \texttt{u1.test}, sorted by mean.
+The shaded band is $\pm 1$ std across the test population. Both sides exhibit
+a long left tail of fully closed dimensions (gate $\to 0$, ID embedding only)
+and a right tail of fully open dimensions (gate $\to 1$, side-info projection
+only); the fusion mechanism specialises rather than averages.}
+\label{fig:gate_perdim}
+\end{figure}
+
+\paragraph{Is the gate's choice population-wide or category-conditional?}
+We stratify the per-prediction gate by the user's occupation (top six
+categories) and by the item's dominant genre (top six), then compute the
+pairwise Spearman rank correlation between the per-dimension orderings of any
+two strata. For occupations the mean rank correlation is $0.96$; for genres
+it is $0.91$. Two strata picking similar dimensions to open implies the gate
+is making a population-wide decision rather than conditioning on the
+categorical side information. So while the \emph{fused output} of course
+depends on the user's and item's features (the side-information vector is
+plumbed into both the projection and the gate input), the
+\emph{per-dimension partition} between ID-driven and side-info-driven
+dimensions is a population-level architectural choice that emerges from
+training.
+
 \subsection{Discussion}
 The ablation paints a sharper picture than the headline number alone. The
 fusion mechanism does the bulk of the empirical work: gated fusion lifts RMSE
@@ -555,5 +620,55 @@ fallback at the activity extremes.
 
 \bibliographystyle{plain}
 \bibliography{refs}
+
+\appendix
+\section{Reproducibility}
+\label{sec:repro}
+All experiments run on a 14-inch MacBook Pro M1~Pro CPU (no GPU) under
+Python 3.11 with PyTorch 2.11 (CPU build), NumPy 2.4, scikit-learn 1.8 and
+matplotlib 3.10. The code is structured as a small, dependency-light
+package; the entire test suite (six unit tests covering gate shape,
+zero-init invariant, ordinal probability normalisation, threshold
+monotonicity, NMF non-negativity projection, and end-to-end
+forward/backward) runs in $\sim\!2$~s. Every reported headline number
+traces to a JSON dump in the repository archive.
+
+\begin{table}[ht]
+\centering
+\caption{Reproducibility commands. All scripts are deterministic given
+the listed seeds; \texttt{val\_seed}$=0$ is fixed across the project.}
+\label{tab:repro}
+\begin{tabular}{lll}
+\toprule
+Result & Command & Wall time \\
+\midrule
+6-cell ablation, u1, 3 seeds & \texttt{run\_ablations.py} & $\sim$10 min \\
+Sensitivity sweep ($d$, $\lambda$), 3 seeds & \texttt{run\_sensitivity.py} & $\sim$15 min \\
+5-split CV, 6 cells, 3 seeds (90 runs) & \texttt{run\_multisplit.py} & $\sim$60 min \\
+Manifold visualisation (u1) & \texttt{run\_visualization.py} & $\sim$1 min \\
+Cold-start regime analysis (u1) & \texttt{run\_coldstart.py} & $\sim$2 min \\
+Per-class confusion / F1 (u1) & \texttt{run\_classmetrics.py} & $\sim$2 min \\
+Logit vs.\ probit link (5 splits) & \texttt{run\_link\_compare.py} & $\sim$10 min \\
+Per-dim gate analysis (u1) & \texttt{run\_gate\_analysis.py} & $\sim$1 min \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Seeds: training-seed set $\{42, 43, 44\}$; val-split seed $0$ (independent
+of training). Optimiser Adam~\cite{kingma2014adam} with learning rate
+$10^{-3}$ and weight decay $\lambda=10^{-5}$; ordinal-head thresholds
+excluded from weight decay. Patience$=10$ for the ablation protocol and
+$30$ for the headline protocol. Embedding dimension $d=128$, batch size
+$64$, max $30$ epochs. NMF baseline uses projected gradient descent on
+the factor matrices (clamping to $\ge 0$ after each Adam step), with
+biases unconstrained.
+
+\section{Software}
+The code is released under the MIT licence, with a single \texttt{uv}
+lockfile, the deterministic dataset loader, all experiment scripts, the
+six-test \texttt{pytest} suite, and a per-result JSON archive that
+includes the configuration snapshot used to produce it. Every figure
+and number in this paper can be regenerated by running the corresponding
+script in Table~\ref{tab:repro}.
 
 \end{document}

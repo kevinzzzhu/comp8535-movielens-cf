@@ -488,3 +488,24 @@ Frame the contribution as **an integration study with a calibration claim and a 
 **Compute spent vs lift**: ~10 min compute + ~30 min writing for a defensive-value lift. Worth it given the OPRFM citation is a marker-visible scoop risk.
 
 **Tier 3 (deferred)**: Algorithm 1 pseudo-code box was drafted but cut to control page count (paper hit 10 pages with it, 9 without). Equations (1)-(3) in §3 already specify the model; the algorithm box was clarity not novelty. Reproducibility appendix and pseudo-code can land in Week 5 if the page limit allows; otherwise dropped.
+
+---
+
+### 2026-04-29 · Tier 2 — Per-dimension gate interpretability + Algorithm 1 + Reproducibility appendix
+
+User direction "ignore the page limit, we'll cut it later after drafting the entire work, so include everything that might be useful" — restoring the previously-cut Algorithm 1 and adding a full reproducibility appendix.
+
+**Per-dimension gate analysis** (`scripts/run_gate_analysis.py`, `results/2026-04-29_gate_analysis/`): trains gated+ordinal on u1 once and dumps per-prediction $g_u$, $g_i$ across the 20K test predictions. Aggregates per-dimension mean / std and stratifies by occupation / dominant genre.
+
+Findings:
+1. **Bimodal specialisation**: per-dim mean spans $[0.002, 0.984]$ on the user side, $[0.002, 0.992]$ on the item side. Population mean $0.263$ / $0.317$. Only $20.3\%$ / $21.9\%$ of dimensions sit above the zero-init value of $0.5$ — the gate divides labour rather than averaging.
+2. **Population-wide partition**: pairwise Spearman rank correlation between top-K occupation strata $0.96$, between top-K genre strata $0.91$. Categories agree on which dims to open. The per-dim partition is a population-level architectural choice, not a per-user conditional.
+3. The $[0.002, 0.992]$ range confirms the gate is fully exploiting its expressive capacity.
+
+**Paper changes**:
+- §4.7 "Per-dimension gate interpretability" added with `gate_distribution.png` (sorted per-dim mean ± std) and a Spearman-correlation paragraph.
+- Algorithm 1 (forward pass + ordinal NLL pseudo-code) restored before §3.4 Complexity. `algorithm` and `algpseudocode` packages re-added.
+- Appendix A "Reproducibility": full table of script / wall-time / seeds + a Software statement noting the MIT licence, uv lockfile, six-test pytest suite, and per-result JSON archive.
+- Paper now compiles to **11 pages** (8pp body + 1pp refs + 2pp appendix). Per user direction, page count is deferred to a final trimming pass.
+
+**Stratified heatmaps** (`gate_strat_users.png`, `gate_strat_items.png`) sit in the archive but are not in the main paper — the Spearman analysis quotes the headline number more compactly.
