@@ -14,6 +14,10 @@ Fig/*.pdf
 .vscode/
 .idea/
 
+# MovieLens-1M dataset (24MB; pull from grouplens.org via repro instructions)
+data/ml-1m/
+data/ml-1m.zip
+
 # LaTeX build artefacts (keep main.pdf tracked, ignore intermediates)
 paper/*.aux
 paper/*.log

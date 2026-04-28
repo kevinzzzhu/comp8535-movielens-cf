@@ -430,30 +430,6 @@ linear directions.
 \subsection{Gate behaviour and cold-start regime}
 \label{sec:coldstart}
 
-\paragraph{Per-dimension structure.}
-Because the gate $g_u$ depends only on $(p_u, a_u)$ and $g_i$ only on
-$(q_i, a_i)$, training induces fixed gate matrices of shape
-$(n,d)$ and $(m,d)$. Aggregating across the population, the mean per-dimension
-gate value spans almost the full unit interval: dim-means range from
-$0.002$ to $0.984$ on the user side and $0.002$ to $0.991$ on the item side
-(Figure~\ref{fig:gate_per_dim}), with cross-dimension std of $0.289$ and
-$0.302$ respectively. The model has learned to allocate distinct roles to
-different embedding dimensions: some dimensions are nearly fully closed
-(``embedding dimensions'', $g\!\approx\!0$), others nearly fully open
-(``side-information dimensions'', $g\!\approx\!1$). The mean-gate values
-discussed below conceal this heterogeneity and would be reproducible by a
-global scalar gate, but the per-dimension gating produces this structural
-specialisation that a single scalar cannot.
-
-\begin{figure}[ht]
-\centering
-\includegraphics[width=0.92\linewidth]{figures/gate_per_dim.png}
-\caption{Per-dimension mean gate value, sorted by mean, with $\pm1$ std
-across the population. Both user and item gates span almost the full unit
-interval: a single learned scalar gate could not produce this.}
-\label{fig:gate_per_dim}
-\end{figure}
-
 \paragraph{Per-user trajectory.}
 A standard intuition for a learned gate is that it should \emph{close} as the
 ID embedding accumulates training signal --- a power user with hundreds of
