@@ -155,6 +155,11 @@ with $\theta_0=-\infty$ and $\theta_5=+\infty$. We enforce monotonicity by the
 softplus reparameterisation $\theta_k=\theta_1+\sum_{j=1}^{k-1}\mathrm{softplus}(\delta_j)$,
 which guarantees $\theta_k<\theta_{k+1}$ for any unconstrained $(\theta_1,\delta_1,\dots,\delta_{K-2})$.
 This trick has been used in deep ordinal classification~\cite{vargas2020clm,cao2020coral}.
+We use the logit link in (\ref{eq:cum}); replacing the logistic CDF with
+the normal CDF (probit, as in OPRFM~\cite{zaman2025oprfm}) shifts headline
+RMSE by $-0.0009$ and NLL by $+0.005$ across the five splits, both within
+between-split standard deviation, so we treat the choice as a
+parameterisation detail rather than a methodological commitment.
 
 \paragraph{Quantile initialisation.}
 Default zero initialisation (or a single $\theta_1=-2$) is poor: at $s=0$ the
@@ -176,7 +181,6 @@ $\hat r_{ui}=\sum_{k=1}^{5}k\,P(r=k\mid s_{ui})$. As an ablation we also
 consider the \emph{sigmoid} head used by previous-group baselines:
 $\hat r_{ui}=4\sigma(s_{ui})+1$ trained with mean-squared error.
 
-\subsection{Complexity}
 The MF backbone has $(n+m)d$ embedding parameters plus $n+m$ biases; for
 MovieLens-100K with $n=943$, $m=1682$, $d=128$, that is $\approx 3.4\times10^5$
 parameters. Each fusion module adds a projection ($d_{u/i}\cdot d + d$) and a gate

@@ -46,13 +46,20 @@ class OrdinalHead(nn.Module):
     which puts most probability mass on class 1 at init — poor gradient flow early. Passing
     `train_ratings` initialises the thresholds from the empirical rating distribution so that
     at s=0 the predicted marginal matches the data.
+
+    `link ∈ {"logit", "probit"}` selects the link function. Logit is our default; probit is
+    the parameterisation used by OPRFM (Zaman & Jana, 2025) and is included for ablation.
     """
 
-    def __init__(self, n_classes: int = 5, train_ratings: torch.Tensor | None = None):
+    def __init__(self, n_classes: int = 5, train_ratings: torch.Tensor | None = None,
+                 link: str = "logit"):
         super().__init__()
+        if link not in ("logit", "probit"):
+            raise ValueError(f"unknown link {link!r}; expected 'logit' or 'probit'")
         self.n_classes = n_classes
+        self.link = link
         if train_ratings is not None:
-            theta1, deltas = self._thresholds_from_ratings(train_ratings, n_classes)
+            theta1, deltas = self._thresholds_from_ratings(train_ratings, n_classes, link)
             self.theta1 = nn.Parameter(theta1)
             self.deltas = nn.Parameter(deltas)
         else:
@@ -60,19 +67,22 @@ class OrdinalHead(nn.Module):
             self.deltas = nn.Parameter(torch.zeros(n_classes - 2))
 
     @staticmethod
-    def _thresholds_from_ratings(ratings: torch.Tensor, n_classes: int) -> tuple[torch.Tensor, torch.Tensor]:
-        """Derive (theta1, deltas_pre_softplus) so sigmoid(theta_k - 0) matches P(r<=k)."""
+    def _thresholds_from_ratings(ratings: torch.Tensor, n_classes: int, link: str
+                                  ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Derive (theta1, deltas_pre_softplus) so cdf(theta_k - 0) matches P(r<=k)."""
         cls = (ratings.round().long() - 1).clamp(0, n_classes - 1)
         counts = torch.bincount(cls, minlength=n_classes).float()
         probs = counts / counts.sum()
         cum = torch.cumsum(probs, dim=0)[:-1]              # P(r<=k) for k=1..K-1
         eps = 1e-3
         cum = cum.clamp(eps, 1.0 - eps)
-        thr = torch.logit(cum)                              # theta_k = logit(P(r<=k))
+        if link == "logit":
+            thr = torch.logit(cum)                          # theta_k = logit(P(r<=k))
+        else:  # probit: theta_k = Phi^{-1}(P(r<=k)) = sqrt(2) * erfinv(2p - 1)
+            thr = torch.erfinv(2 * cum - 1) * (2.0 ** 0.5)
         theta1 = thr[0].detach().clone()
         gaps = (thr[1:] - thr[:-1]).clamp(min=1e-3)         # strictly positive gaps
         # invert softplus: deltas_raw such that softplus(deltas_raw) = gaps
-        # softplus(x) = log(1 + exp(x)); inverse: log(exp(gap) - 1)
         deltas = torch.log(torch.expm1(gaps)).detach().clone()
         return theta1, deltas
 
@@ -80,12 +90,17 @@ class OrdinalHead(nn.Module):
         gaps = F.softplus(self.deltas)
         return torch.cat([self.theta1.unsqueeze(0), self.theta1 + torch.cumsum(gaps, dim=0)])
 
+    def _cdf(self, x: torch.Tensor) -> torch.Tensor:
+        """Cumulative distribution of the chosen link's latent noise."""
+        if self.link == "logit":
+            return torch.sigmoid(x)
+        # Probit: standard normal CDF via erf.
+        return 0.5 * (1.0 + torch.erf(x / (2.0 ** 0.5)))
+
     def class_probs(self, s: torch.Tensor) -> torch.Tensor:
         """Return (B, n_classes) probabilities."""
         thr = self.thresholds()  # (n_classes-1,)
-        # P(r <= k) = sigmoid(theta_k - s)
-        cum = torch.sigmoid(thr.unsqueeze(0) - s.unsqueeze(-1))
-        # P(r = k) = diff of cumulative, padded with 0 and 1
+        cum = self._cdf(thr.unsqueeze(0) - s.unsqueeze(-1))
         zeros = torch.zeros_like(cum[..., :1])
         ones = torch.ones_like(cum[..., :1])
         cdf = torch.cat([zeros, cum, ones], dim=-1)
@@ -109,6 +124,7 @@ class CFGatedOrdinal(nn.Module):
         head: str = "ordinal",  # {"sigmoid", "ordinal"}
         n_classes: int = 5,
         train_ratings: torch.Tensor | None = None,
+        ordinal_link: str = "logit",  # {"logit", "probit"} for ordinal head
     ):
         super().__init__()
         self.fusion_kind = fusion
@@ -136,7 +152,8 @@ class CFGatedOrdinal(nn.Module):
             raise ValueError(f"unknown fusion: {fusion}")
 
         if head == "ordinal":
-            self.head = OrdinalHead(n_classes=n_classes, train_ratings=train_ratings)
+            self.head = OrdinalHead(n_classes=n_classes, train_ratings=train_ratings,
+                                    link=ordinal_link)
         elif head != "sigmoid":
             raise ValueError(f"unknown head: {head}")
 

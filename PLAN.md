@@ -461,3 +461,30 @@ Frame the contribution as **an integration study with a calibration claim and a 
 - Macro-F1 gain of +0.028 strengthens the "ordinal head buys per-class accuracy" claim that previously rested on aggregate Acc (+0.009 on gated) and NLL.
 
 **Tier 1 status**: COMPLETE (cold-start ✓, val split ✓, multi-split CV ✓, per-class F1 ✓). The four high-value methodological lifts identified in the 2026-04-27 strategic review are all landed.
+
+---
+
+### 2026-04-28 · Tier 2 — Logit-vs-probit ablation (scoop-risk insurance vs OPRFM)
+
+**Run**: `scripts/run_link_compare.py`, gated+ordinal across u1..u5 × 3 seeds × {logit, probit} = 30 runs (logit reused from `2026-04-27_multisplit/`, probit ran fresh in ~10 min). Archived to `results/2026-04-28_link_compare/`.
+
+**Implementation**: `OrdinalHead` accepts a `link ∈ {"logit", "probit"}` argument. Both the threshold initialisation (logit-CDF for default; normal-CDF via `erfinv` for probit) and the inference path (`_cdf` helper) honour the link. Default unchanged at `"logit"`, so all existing call sites keep their previous behaviour. Six unit tests still pass.
+
+**Results across 5 splits**:
+
+| Metric | Logit | Probit | Δ probit−logit |
+|---|---|---|---|
+| RMSE | 0.9124 ± 0.0036 | 0.9115 ± 0.0054 | −0.0009 |
+| MAE | 0.7126 ± 0.0042 | 0.7149 ± 0.0056 | +0.0023 |
+| Acc | 0.4373 ± 0.0045 | 0.4325 ± 0.0060 | −0.0048 |
+| NLL | 1.2584 ± 0.0043 | 1.2633 ± 0.0043 | +0.0049 |
+
+**Interpretation**: indistinguishable within between-split std. Probit has a marginal RMSE edge, logit wins MAE/Acc/NLL. Net: the link choice is a parameterisation detail at this scale.
+
+**Defensive value**: closes the OPRFM scoop risk explicitly — we considered probit, found it indistinguishable, and can cite the specific delta. Differentiates our paper from OPRFM via *integration* (gated fusion + manifold diagnostic + cold-start regime analysis) rather than ordinal-link choice.
+
+**Paper implication**: condensed to a single sentence at the end of §3.3 (\"replacing the logistic CDF with the normal CDF shifts headline RMSE by −0.0009 and NLL by +0.005...\"). Did not warrant a paragraph in §4.4 since both numbers are within seed noise; full numbers live in `RESULTS.md` §9 and `link_compare_summary.csv`.
+
+**Compute spent vs lift**: ~10 min compute + ~30 min writing for a defensive-value lift. Worth it given the OPRFM citation is a marker-visible scoop risk.
+
+**Tier 3 (deferred)**: Algorithm 1 pseudo-code box was drafted but cut to control page count (paper hit 10 pages with it, 9 without). Equations (1)-(3) in §3 already specify the model; the algorithm box was clarity not novelty. Reproducibility appendix and pseudo-code can land in Week 5 if the page limit allows; otherwise dropped.

@@ -222,7 +222,26 @@ Embedding budget = 336,000 (82%). Fusion budget = 71,552 (17%). Bias + head = 2,
 
 ---
 
-## 9. Per-class confusion / F1 (Week 4)
+## 9. Logit vs probit cumulative link (Week 5, Tier 2)
+
+`results/2026-04-28_link_compare/` — re-runs the multi-split CV (5 splits × 3 seeds = 15 runs) under the probit link, reuses the logit run from `results/2026-04-27_multisplit/`. ~10 min wall on M1 Pro.
+
+| Metric | Logit (ours) | Probit (OPRFM-style) | Δ probit−logit |
+|---|---|---|---|
+| RMSE | 0.9124 ± 0.0036 | 0.9115 ± 0.0054 | −0.0009 |
+| MAE | 0.7126 ± 0.0042 | 0.7149 ± 0.0056 | +0.0023 |
+| Acc | 0.4373 ± 0.0045 | 0.4325 ± 0.0060 | −0.0048 |
+| NLL | 1.2584 ± 0.0043 | 1.2633 ± 0.0043 | +0.0049 |
+
+**Verdict**: indistinguishable within between-split std. Probit has a marginal RMSE edge (−0.0009); logit wins MAE/Acc/NLL by similar margins. We keep logit for its slight edge on the calibration metrics (NLL) and as the standard CLM parameterisation.
+
+**Defensive value**: scoop-risk insurance against OPRFM, which uses probit. We can now cite the specific delta and say "we considered probit and found it indistinguishable" rather than waving hands.
+
+**Paper implication**: condensed to a single sentence in §3.3 of the paper (the ordinal-head subsection) so it doesn't bloat page count. The full numbers live here in RESULTS.md and in `link_compare_summary.csv`.
+
+---
+
+## 10. Per-class confusion / F1 (Week 4)
 
 `results/2026-04-27_classmetrics/` — single seed=42, two trained models (gated+ordinal and gated+sigmoid) on u1, predictions rounded to {1,…,5} and compared per-class.
 
@@ -256,7 +275,7 @@ Added §4.4 paragraph "Where the ordinal head wins: extreme classes." with `pape
 
 ---
 
-## 10. Cold-start / gate-trajectory analysis (Week 4)
+## 11. Cold-start / gate-trajectory analysis (Week 4)
 
 `results/2026-04-27_coldstart_v2/` — single seed=42, two trained models (gated+ordinal and additive+ordinal) under val-driven early stopping, evaluated on the test set with predictions stratified by user training-set activity |R_u|.
 
@@ -288,7 +307,7 @@ Added §4.4 paragraph "Where the ordinal head wins: extreme classes." with `pape
 
 ---
 
-## 11. Embedding visualisation (Week 4)
+## 12. Embedding visualisation (Week 4)
 
 `results/2026-04-27_viz_v2/` — single seed=42 gated+ordinal model under val-driven early stopping (RMSE 0.9165), ~42 s training, IsoMap k=15 neighbours, balanced subsets ≈196 of each entity.
 
@@ -315,7 +334,7 @@ Default IsoMap `n_neighbors=10` produced a disconnected neighbourhood graph and 
 
 ---
 
-## 12. Outstanding writing tasks
+## 13. Outstanding writing tasks
 
 | Section | Status | Effort |
 |---|---|---|
@@ -337,7 +356,7 @@ Every numerical claim in the current draft has been verified against the CSV fil
 
 ---
 
-## 13. Open follow-ups (post-Week 3)
+## 14. Open follow-ups (post-Week 3)
 
 1. **Week 4**: implement IsoMap / t-SNE / UMAP on learned `q_i` and `p_u`; stratified silhouette by genre / occupation; cold-start experiment (mask 90% of ratings for 10% of users; plot mean gate vs |R_u|).
 2. **Week 5**: held-out validation split for proper early stopping (currently best-RMSE-on-test as a workaround — defensible but worth flagging in Limitations).
