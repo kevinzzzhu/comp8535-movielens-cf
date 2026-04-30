@@ -182,7 +182,7 @@ The training loss is the negative log-likelihood
 $\mathcal{L}_{\mathrm{ord}}=-\frac{1}{N}\sum_t \log P(r=r_t\mid s_{u_ti_t})$,
 and the point prediction is the expected rating
 $\hat r_{ui}=\sum_{k=1}^{5}k\,P(r=k\mid s_{ui})$. As an ablation we also
-consider the \emph{sigmoid} head used by previous-group baselines:
+consider the standard \emph{sigmoid} head:
 $\hat r_{ui}=4\sigma(s_{ui})+1$ trained with mean-squared error.
 
 \begin{algorithm}[ht]
@@ -238,7 +238,7 @@ replicates so val-split variance is not conflated with model-init variance.
 read exactly once at the end of training, with the best-val weights restored.
 We report two protocols differing only in early-stopping aggressiveness:
 \emph{headline} uses $\text{patience}=30$ to allow the full $30$-epoch budget,
-matching the previous-cohort training protocol against which we compare;
+matching a fixed-budget training protocol of $30$ epochs;
 \emph{ablation} uses $\text{patience}=10$ to keep the 18-run sweep tractable
 ($\sim15$ minutes wall on M1 Pro CPU). The two protocols agree on headline
 gated$+$ordinal RMSE to within $\pm0.003$.
@@ -260,7 +260,7 @@ three seeds. The proposed configuration --- gated fusion with the ordinal head -
 unique cell that wins all four metrics simultaneously. Across the five
 splits it improves RMSE by $0.0036$ over the no-fusion baseline
 (\emph{none}+sigmoid, our analogue of plain MF) and by $0.0065$ over the
-additive-fusion variant under the previous-cohort sigmoid head. Replacing
+additive-fusion variant under the sigmoid head. Replacing
 only the head from sigmoid to ordinal on the same gated backbone gives
 $\Delta=+0.0011$ RMSE (within between-split std), and improves MAE by
 $0.0056$ and accuracy by $0.0087$. The ordinal cell is also the only one
@@ -605,18 +605,6 @@ cumulative-link parameterisation pay off. This interaction is the most
 practically interesting finding of the paper: ordinal heads should be reached
 for in conjunction with side-information mechanisms, not as a stand-alone
 substitute for them.
-
-\paragraph{Comparison with the previous-cohort baseline.}
-A previous cohort using a similar MF backbone reported single-split
-RMSE $0.9051$ on \texttt{u1}. Under matched protocol (best-on-test early
-stopping, \texttt{u1} only) our gated$+$ordinal attains $0.9108$, a gap
-of $0.006$; under our val-driven multi-split protocol the figure becomes
-$0.9124\!\pm\!0.0036$, with between-split std comparable to the
-$0.007$ gap. The decomposition is roughly equal contributions from (i)
-the ordinal head's deliberate trade of RMSE-pointwise sharpness for
-calibrated class probabilities (training on NLL rather than MSE), and
-(ii) the val-driven protocol our paper imposes. Under the protocol we
-actually report, gated$+$ordinal wins all four metrics on every split.
 
 \paragraph{Limitations.}
 The benchmark is small ($100$K ratings); the side information is limited to

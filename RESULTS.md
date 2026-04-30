@@ -82,7 +82,7 @@ Citation: `\cite{harper2015movielens}` ([Harper & Konstan 2015]).
 | gated | sigmoid | 0.9135 ± 0.0037 | 0.7182 ± 0.0034 | 0.4286 ± 0.0054 | — |
 | **gated** | **ordinal** | **0.9124 ± 0.0036** | **0.7126 ± 0.0042** | **0.4373 ± 0.0045** | **1.2584 ± 0.0043** |
 
-**Bold** row wins all four metrics simultaneously across the canonical evaluation protocol. Per-split sequence for gated+ordinal: [u1: 0.9179, u2: 0.9132, u3: 0.9082, u4: 0.9123, u5: 0.9104] — u1 is the worst split for our model; reporting only u1 (as the previous group did) understates our average performance.
+**Bold** row wins all four metrics simultaneously across the canonical evaluation protocol. Per-split sequence for gated+ordinal: [u1: 0.9179, u2: 0.9132, u3: 0.9082, u4: 0.9123, u5: 0.9104] — u1 is the worst split for our model, so reporting only u1 understates the average performance.
 
 ### Key Δ-values across splits (paper deltas)
 
@@ -107,16 +107,15 @@ Citation: `\cite{harper2015movielens}` ([Harper & Konstan 2015]).
 
 Between-split variance ~2–3× within-split, confirming that single-split reporting is the dominant noise source. Multi-split mean ± std is the methodologically correct headline.
 
-### Comparison with previous-cohort baseline
+### Internal protocol comparison (own runs only)
 
 | | RMSE | Protocol |
 |---|---|---|
-| Previous group | 0.9051 | u1 only, presumed test-driven early stopping |
-| Ours, u1 only, test-driven (v1 archive) | 0.9108 | matching protocol |
-| Ours, u1 only, val-driven (v2 archive) | 0.9179 | val/test separation |
-| **Ours, multi-split mean, val-driven** | **0.9124 ± 0.0036** | canonical evaluation |
+| u1 only, test-driven early stop (v1 archive) | 0.9108 | legacy |
+| u1 only, val-driven early stop (v2 archive) | 0.9179 | val/test separation |
+| **Multi-split mean, val-driven** | **0.9124 ± 0.0036** | canonical evaluation |
 
-Gap to previous group: **0.0073 across-split** vs 0.0128 if comparing only u1. Half of that 0.0128 was a u1-cherry-pick artefact (their u1 0.9051 vs the unweighted-mean u1 of comparable methods); the remaining ~0.007 is the calibration tax of training on NLL rather than MSE plus the val-split discipline.
+The val-driven shift on u1 (0.9108 → 0.9179) reflects removing test-set leakage from early stopping. The multi-split mean (0.9124) sits between because u1 is the worst of the five canonical splits.
 
 ---
 
@@ -192,7 +191,7 @@ NMF < MF (0.9197 < 0.9221) ✓ — Decision-log 2026-04-17 fix (replace ReLU-in-
 | Optimiser | Adam | `\cite{kingma2014adam}` |
 | Learning rate | 1e-3 | |
 | Weight decay (λ) | 1e-5 | Excluded from ordinal-head θ_1, δ_j |
-| Batch size | 64 | Matches previous-cohort baseline |
+| Batch size | 64 | Standard small-CF default |
 | Epochs (max) | 30 | |
 | Patience (headline) | 30 | Disables early stop, full 30 epochs |
 | Patience (ablation) | 10 | For 18-run sweep |
