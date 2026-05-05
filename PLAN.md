@@ -458,7 +458,7 @@ Frame the contribution as **an integration study with a calibration claim and a 
 **Paper implication**:
 - §4.4 added paragraph "Where the ordinal head wins: extreme classes." with the `per_class_f1.png` bar chart.
 - The confusion-matrix figure (`confusion_grid.png`) is in the archive but not in the main paper, to save page space (already at 9 pages).
-- Macro-F1 gain of +0.028 strengthens the "ordinal head buys per-class accuracy" claim that previously rested on aggregate Acc (+0.009 on gated) and NLL.
+- Macro-F1 gain of +0.028 strengthens the "ordinal head buys per-class accuracy" claim that had rested on aggregate Acc (+0.009 on gated) and NLL.
 
 **Tier 1 status**: COMPLETE (cold-start ✓, val split ✓, multi-split CV ✓, per-class F1 ✓). The four high-value methodological lifts identified in the 2026-04-27 strategic review are all landed.
 
@@ -468,7 +468,7 @@ Frame the contribution as **an integration study with a calibration claim and a 
 
 **Run**: `scripts/run_link_compare.py`, gated+ordinal across u1..u5 × 3 seeds × {logit, probit} = 30 runs (logit reused from `2026-04-27_multisplit/`, probit ran fresh in ~10 min). Archived to `results/2026-04-28_link_compare/`.
 
-**Implementation**: `OrdinalHead` accepts a `link ∈ {"logit", "probit"}` argument. Both the threshold initialisation (logit-CDF for default; normal-CDF via `erfinv` for probit) and the inference path (`_cdf` helper) honour the link. Default unchanged at `"logit"`, so all existing call sites keep their previous behaviour. Six unit tests still pass.
+**Implementation**: `OrdinalHead` accepts a `link ∈ {"logit", "probit"}` argument. Both the threshold initialisation (logit-CDF for default; normal-CDF via `erfinv` for probit) and the inference path (`_cdf` helper) honour the link. Default unchanged at `"logit"`, so all existing call sites keep their existing behaviour. Six unit tests still pass.
 
 **Results across 5 splits**:
 
@@ -493,7 +493,7 @@ Frame the contribution as **an integration study with a calibration claim and a 
 
 ### 2026-04-29 · Tier 2 — Per-dimension gate interpretability + Algorithm 1 + Reproducibility appendix
 
-User direction "ignore the page limit, we'll cut it later after drafting the entire work, so include everything that might be useful" — restoring the previously-cut Algorithm 1 and adding a full reproducibility appendix.
+User direction "ignore the page limit, we'll cut it later after drafting the entire work, so include everything that might be useful" — restoring the earlier-cut Algorithm 1 and adding a full reproducibility appendix.
 
 **Per-dimension gate analysis** (`scripts/run_gate_analysis.py`, `results/2026-04-29_gate_analysis/`): trains gated+ordinal on u1 once and dumps per-prediction $g_u$, $g_i$ across the 20K test predictions. Aggregates per-dimension mean / std and stratifies by occupation / dominant genre.
 

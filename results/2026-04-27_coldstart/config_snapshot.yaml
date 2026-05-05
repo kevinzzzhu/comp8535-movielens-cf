@@ -16,7 +16,7 @@ weight_decay: 1.0e-5
 
 # Early stopping protocol.
 # - "headline"  (patience=30): disables early stopping, trains the full 30 epochs.
-#                Used for reported main-table numbers, matches the previous group's protocol.
+#                Used for reported main-table numbers; follows the fixed 30-epoch baseline protocol.
 # - "ablation"  (patience=10): speeds up the 18-run ablation sweep in Week 3.
 # Expected headline vs ablation drift: within ±0.003 RMSE over 3 seeds (to be verified).
 protocol: headline    # {headline, ablation}
@@ -27,7 +27,7 @@ patience_ablation: 10
 fusion: gated         # {none, additive, gated}
 head: ordinal         # {sigmoid, ordinal}
 
-# Always-on companion ablation: same fusion=gated but with the previous group's sigmoid head.
+# Always-on companion ablation: same fusion=gated but with the sigmoid head.
 # Set false for single-model runs; true for headline reporting so the main table shows
 # that our fusion mechanism alone improves RMSE under the baseline output head.
 run_gated_sigmoid_ablation: true

@@ -28,7 +28,7 @@ class GatedFusion(nn.Module):
 
 
 class AdditiveFusion(nn.Module):
-    """Previous baseline-style fusion: p' = p + ReLU(W v). Included for ablation only."""
+    """Additive fusion: p' = p + ReLU(W v). Included for ablation only."""
 
     def __init__(self, embed_dim: int, feat_dim: int):
         super().__init__()

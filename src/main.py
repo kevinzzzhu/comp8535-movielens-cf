@@ -87,7 +87,7 @@ def run(cfg_path: Path, log_dir: Path):
     )
 
     # --- Ablation: gated fusion + sigmoid head (isolates the fusion contribution
-    # under the previous group's output head; see Decisions log 2026-04-17).
+    # under the sigmoid output head).
     if cfg.get("run_gated_sigmoid_ablation", True):
         gated_sigmoid = CFGatedOrdinal(
             n_users=meta.n_users,
