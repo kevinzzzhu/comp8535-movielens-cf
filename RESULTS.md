@@ -175,7 +175,7 @@ Both chosen defaults (d=128, λ=1e-5) lie at the empirical optimum of their swee
 
 | Baseline | RMSE | MAE | Acc | NLL |
 |---|---|---|---|---|
-| SVD (rank=20, mean-centred) | 0.9856 | 0.7818 | 0.3552 | — |
+| SVD (rank=20, mean-centred) | 1.0834 | 0.8896 | 0.3716 | — |
 | MF (biased dot product, MSE) | 0.9221 | 0.7274 | 0.4124 | — |
 | NMF (proj. grad. descent on factors) | 0.9197 | 0.7252 | 0.4146 | — |
 | **Proposed (gated+ordinal)** | **0.9122** | **0.7130** | **0.4367** | **1.2472** |

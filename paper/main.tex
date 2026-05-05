@@ -27,7 +27,7 @@ cumulative-link ordinal head whose monotone thresholds are initialised from the
 empirical rating quantiles. The combination yields RMSE $0.9124\pm0.0036$ across the five canonical
 MovieLens-100K splits under val-driven early stopping, beating both an MF
 baseline ($0.9160$) and an additive-fusion variant ($0.9189$) of the same
-backbone on every split. The ordinal head simultaneously delivers a test-set
+backbone on the across-split mean and on four of the five individual splits. The ordinal head simultaneously delivers a test-set
 NLL of $1.2584$, well below the $\log 5\approx1.61$ uniform baseline.
 A full ablation isolates fusion as the dominant contributor and reveals an
 interaction with the head: ordinal regression helps only once the backbone has
@@ -597,8 +597,9 @@ $\sim\!12$ minutes on M1 Pro CPU compared to $\sim\!50$ seconds on 100K.
 \subsection{Discussion}
 The ablation paints a sharper picture than the headline number alone. The
 fusion mechanism does the bulk of the empirical work: gated fusion lifts RMSE
-across both heads and across all five splits, and the lift is comparable
-under the two heads. The ordinal head delivers calibration cheaply --- four
+on the across-split mean under both heads (and on four of the five
+individual splits; \texttt{u4} is the lone exception, where the gated
+configuration is within seed std of the no-fusion baseline). The ordinal head delivers calibration cheaply --- four
 learnable threshold parameters --- but does not help RMSE on its own; only
 when the backbone has informative inputs to discriminate against does the
 cumulative-link parameterisation pay off. This interaction is the most
