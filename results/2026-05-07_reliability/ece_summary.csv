@@ -1,0 +1,13 @@
+head,scope,ece,support
+sigmoid,pooled,0.0108,100000
+ordinal,pooled,0.0143,100000
+sigmoid,class_1,0.0245,1391
+ordinal,class_1,0.0085,1391
+sigmoid,class_2,0.0363,2192
+ordinal,class_2,0.0117,2192
+sigmoid,class_3,0.0337,5182
+ordinal,class_3,0.0189,5182
+sigmoid,class_4,0.0088,6778
+ordinal,class_4,0.0249,6778
+sigmoid,class_5,0.0357,4457
+ordinal,class_5,0.0256,4457

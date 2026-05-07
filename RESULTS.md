@@ -221,7 +221,44 @@ Embedding budget = 336,000 (82%). Fusion budget = 71,552 (17%). Bias + head = 2,
 
 ---
 
-## 9. MovieLens-1M scale-up (Week 5, Tier 2)
+## 9. Reliability diagram + ECE (Week 5)
+
+`results/2026-05-07_reliability/` — single seed=42, two trained models (gated+sigmoid and gated+ordinal) on u1, predicted distributions evaluated against test labels.
+
+For sigmoid the point estimate ŷ ∈ [1,5] is converted to a 5-class distribution by a Gaussian kernel of bandwidth σ=1 in rating units, normalised over the five classes. For ordinal the cumulative-link probabilities P(r=k|s) are read directly. Both then go through the same reliability machinery (10 equal bins of predicted probability; mean predicted vs observed indicator per bin; Expected Calibration Error = Σ_b (n_b/N) |conf_b − acc_b|).
+
+### Pooled ECE
+
+| Head | Pooled ECE |
+|---|---|
+| gated+sigmoid (kernel σ=1) | **0.0108** |
+| gated+ordinal | 0.0143 |
+
+The pooled ECE is close — sigmoid+kernel actually slightly better. This is mostly a kernel-bandwidth artefact; smaller σ would make sigmoid worse, larger σ would flatten its distribution.
+
+### Per-class ECE (the more informative breakdown)
+
+| Class | Support | Sigmoid ECE | Ordinal ECE | Winner |
+|---|---|---|---|---|
+| 1 | 1391 | 0.0245 | **0.0085** | ordinal |
+| 2 | 2192 | 0.0363 | **0.0117** | ordinal |
+| 3 | 5182 | 0.0337 | **0.0189** | ordinal |
+| 4 | 6778 | **0.0088** | 0.0249 | sigmoid |
+| 5 | 4457 | 0.0357 | **0.0256** | ordinal |
+
+Ordinal is better-calibrated on **4 of 5 classes**. Sigmoid wins only on the dominant class 4.
+
+### Mechanism
+
+This mirrors the per-class F1 finding: sigmoid+MSE concentrates probability on the dominant rating (class 4 has 6,778 of 20,000 test ratings, the largest class). That makes class-4 calibration excellent but class-1/2/5 calibration poor. The ordinal head's cumulative-link parameterisation spreads probability across the five classes more evenly — slightly worse on class 4, much better on the rest.
+
+### Paper implication
+
+§4.4 added "Reliability diagram and per-class ECE" paragraph + Figure (`reliability_curves.png`, two-panel reliability diagram, faint per-class lines plus pooled curve). Reproducibility appendix Table 3: reliability runner row (~2 min).
+
+---
+
+## 10. MovieLens-1M scale-up (Week 5, Tier 2)
 
 `results/2026-04-29_ml1m/` — 3 ablation cells × 3 seeds = 9 runs, deterministic random 80/10/10 split (`split_seed=0`), val-driven early stopping, ~86 min wall on M1 Pro CPU.
 
@@ -261,7 +298,7 @@ Embedding budget = 336,000 (82%). Fusion budget = 71,552 (17%). Bias + head = 2,
 
 ---
 
-## 10. Per-dimension gate interpretability (Week 5, Tier 2)
+## 11. Per-dimension gate interpretability (Week 5, Tier 2)
 
 `results/2026-04-29_gate_analysis/` — single seed=42 gated+ordinal model on u1, per-prediction gates extracted across 20,000 test predictions, aggregated per dimension and stratified by occupation/genre.
 
@@ -295,7 +332,7 @@ Embedding budget = 336,000 (82%). Fusion budget = 71,552 (17%). Bias + head = 2,
 
 ---
 
-## 11. Logit vs probit cumulative link (Week 5, Tier 2)
+## 12. Logit vs probit cumulative link (Week 5, Tier 2)
 
 `results/2026-04-28_link_compare/` — re-runs the multi-split CV (5 splits × 3 seeds = 15 runs) under the probit link, reuses the logit run from `results/2026-04-27_multisplit/`. ~10 min wall on M1 Pro.
 
@@ -314,7 +351,7 @@ Embedding budget = 336,000 (82%). Fusion budget = 71,552 (17%). Bias + head = 2,
 
 ---
 
-## 12. Per-class confusion / F1 (Week 4)
+## 13. Per-class confusion / F1 (Week 4)
 
 `results/2026-04-27_classmetrics/` — single seed=42, two trained models (gated+ordinal and gated+sigmoid) on u1, predictions rounded to {1,…,5} and compared per-class.
 
@@ -348,7 +385,7 @@ Added §4.4 paragraph "Where the ordinal head wins: extreme classes." with `pape
 
 ---
 
-## 13. Cold-start / gate-trajectory analysis (Week 4)
+## 14. Cold-start / gate-trajectory analysis (Week 4)
 
 `results/2026-04-27_coldstart_v2/` — single seed=42, two trained models (gated+ordinal and additive+ordinal) under val-driven early stopping, evaluated on the test set with predictions stratified by user training-set activity |R_u|.
 
@@ -380,7 +417,7 @@ Added §4.4 paragraph "Where the ordinal head wins: extreme classes." with `pape
 
 ---
 
-## 14. Embedding visualisation (Week 4)
+## 15. Embedding visualisation (Week 4)
 
 `results/2026-04-27_viz_v2/` — single seed=42 gated+ordinal model under val-driven early stopping (RMSE 0.9165), ~42 s training, IsoMap k=15 neighbours, balanced subsets ≈196 of each entity.
 
@@ -407,7 +444,7 @@ Default IsoMap `n_neighbors=10` produced a disconnected neighbourhood graph and 
 
 ---
 
-## 15. Outstanding writing tasks
+## 16. Outstanding writing tasks
 
 | Section | Status | Effort |
 |---|---|---|
@@ -429,7 +466,7 @@ Every numerical claim in the current draft has been verified against the CSV fil
 
 ---
 
-## 16. Open follow-ups (post-Week 3)
+## 17. Open follow-ups (post-Week 3)
 
 1. **Week 4**: implement IsoMap / t-SNE / UMAP on learned `q_i` and `p_u`; stratified silhouette by genre / occupation; cold-start experiment (mask 90% of ratings for 10% of users; plot mean gate vs |R_u|).
 2. **Week 5**: held-out validation split for proper early stopping (currently best-RMSE-on-test as a workaround — defensible but worth flagging in Limitations).

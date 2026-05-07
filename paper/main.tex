@@ -9,7 +9,7 @@
 % Course-required: use NIPS camera-ready format.
 \nipsfinalcopy
 
-\title{Gated Auxiliary Fusion with Ordinal Regression\\ for Collaborative Filtering on MovieLens-100K}
+\title{Quantile-Initialised Ordinal Collaborative Filtering\\ with Gated Auxiliary Fusion}
 \author{
   Kevin Zhu \\ Australian National University \\ \texttt{u7338066@anu.edu.au}
 }
@@ -18,26 +18,28 @@
 \maketitle
 
 \begin{abstract}
-We study explicit-feedback collaborative filtering on MovieLens-100K under a
-data-analytics lens that prioritises calibration and interpretability over peak
-RMSE. On a transparent dot-product matrix-factorisation backbone we combine two
-well-studied components into one model: a per-dimension symmetric gated fusion
-that blends user/item embeddings with side-feature projections, and a
-cumulative-link ordinal head whose monotone thresholds are initialised from the
-empirical rating quantiles. The combination yields RMSE $0.9124\pm0.0036$ across the five canonical
-MovieLens-100K splits under val-driven early stopping, beating both an MF
-baseline ($0.9160$) and an additive-fusion variant ($0.9189$) of the same
-backbone on the across-split mean and on four of the five individual splits. The ordinal head simultaneously delivers a test-set
-NLL of $1.2584$, well below the $\log 5\approx1.61$ uniform baseline.
-A full ablation isolates fusion as the dominant contributor and reveals an
-interaction with the head: ordinal regression helps only once the backbone has
-side information to exploit. A manifold-projection diagnostic shows that the
-item-side learned geometry is genre-aligned and curved
-(2-D IsoMap silhouette $+0.23$, vs $+0.05$ under PCA), while user-side
-occupation structure exists at $128$ dimensions but does not project linearly.
-The same ordering carries to a $10\!\times$-larger MovieLens-1M scale-up
-(gated$+$ordinal RMSE $0.8481\pm0.0006$, NLL $1.184$). We discuss the
-implications for compact, calibrated recommenders.
+We propose a simple calibration recipe for cumulative-link collaborative
+filtering: initialise the monotone thresholds from the empirical rating
+quantiles of the training set, parameterise their spacing through a
+softplus-inverse, and exclude them from $L_2$ regularisation. The recipe
+matches the data marginal exactly at the start of training and, on a
+transparent dot-product matrix-factorisation backbone, holds calibrated
+test negative log-likelihood ($1.2584$ across the five canonical
+MovieLens-100K splits, vs the $\log 5{\approx}1.61$ uniform baseline)
+without sacrificing RMSE. The recipe is paired with a per-dimension
+symmetric gated fusion of side information --- a modest design choice
+that turns out to do most of the empirical work --- and a
+manifold-projection diagnostic that exposes item-side genre structure
+that linear projections miss (2-D IsoMap silhouette $+0.23$ vs $+0.05$
+under PCA). The combined gated$+$ordinal configuration attains RMSE
+$0.9124\pm0.0036$ across all five MovieLens-100K splits (beating the
+no-fusion baseline $0.9160$ and the additive-fusion variant $0.9189$
+on the across-split mean and on four of the five individual splits),
+with the same ordering preserved on a $10\!\times$-larger MovieLens-1M
+scale-up (RMSE $0.8481\pm0.0006$, NLL $1.184$). The contribution is
+implementation-level: the components are well established; the recipe
+makes them work together calibrated, with a small set of supporting
+diagnostics.
 \end{abstract}
 
 \section{Introduction}
@@ -82,19 +84,28 @@ together with a calibration recipe (empirical-quantile threshold
 initialisation) and a geometry diagnostic.
 
 \paragraph{Contributions.}
+We frame the contribution as implementation-level rather than algorithmic;
+each component below is itself well known.
 \begin{enumerate}
-\item A symmetric per-dimension gated fusion that blends ID embeddings with
-side-feature projections on both the user and the item sides, with
-zero-initialised gates so that training begins at the pre-fusion MF solution
-and the model only opens the gate where side information improves over the
-embedding.
-\item A cumulative-link ordinal head whose monotone thresholds are initialised
-directly from the empirical rating distribution of the training set, so that
-the predicted marginal $P(r=k)$ matches the data marginal at step zero. This
-removes the slow warm-up that ordinal heads otherwise suffer from.
-\item A 6-cell ablation across $\{$none, additive, gated$\}\times\{$sigmoid, ordinal$\}$
-isolating each design choice, plus a sensitivity sweep over $d$ and $\lambda$
-that validates the chosen defaults.
+\item \emph{Headline.} A simple calibration recipe for cumulative-link CF:
+initialise the monotone thresholds from the training-set rating
+quantiles via $\theta_k=\mathrm{logit}(\hat F_k)$, recover the
+unconstrained $\delta_j$ by inverting softplus, and exclude
+$\{\theta_1, \delta_j\}$ from $L_2$ regularisation. The predicted
+marginal then matches the data marginal at $s=0$ to numerical
+precision and the head holds calibrated NLL throughout training.
+\item \emph{Supporting design choice.} A symmetric per-dimension gated
+fusion that blends ID embeddings with side-feature projections on
+both the user and the item sides, with zero-initialised gates so that
+training begins at the pre-fusion MF solution. Empirically this
+fusion does most of the RMSE work --- the ordinal head's contribution
+is concentrated on calibration and per-class accuracy.
+\item \emph{Supporting diagnostic.} A manifold-projection lens (PCA, MDS,
+IsoMap) on the post-fusion embeddings, with silhouette scores
+stratified by occupation and dominant genre. IsoMap recovers
+item-side genre structure that linear projections miss (2-D
+silhouette $+0.23$ vs $+0.05$ under PCA), and the gap is itself an
+interpretable property of the linear core.
 \end{enumerate}
 
 \section{Problem Definition}
@@ -145,8 +156,17 @@ closes per dimension as gradient flows. As an ablation we also consider the
 \emph{additive} variant $p'_u = p_u + a_u$ and the \emph{none} variant
 $p'_u\equiv p_u$ (and similarly for items).
 
-\subsection{Ordinal regression head}
+\subsection{Ordinal regression head with the calibration recipe}
 \label{sec:method:head}
+The headline contribution of this paper sits in this subsection: a small
+recipe for cumulative-link CF that holds the predicted rating distribution
+calibrated to the training-set marginal from step zero. The recipe has three
+ingredients --- monotone-threshold parameterisation
+(Eq.~\ref{eq:cum}--\ref{eq:softplus}), \emph{empirical-quantile
+initialisation} (Eq.~\ref{eq:quantile-init}), and exclusion of the threshold
+parameters from $L_2$ regularisation. None of the three is individually new;
+their combination is what we contribute.
+
 For the head we treat $r$ as an ordinal variable with $K=5$ classes. We use the
 cumulative-link model of McCullagh~\cite{mccullagh1980ordinal} with monotone
 thresholds $\theta_1<\theta_2<\theta_3<\theta_4$:
@@ -156,27 +176,39 @@ P(r\le k\mid s) = \sigma(\theta_k - s),\qquad
 P(r=k\mid s) = \sigma(\theta_k - s)-\sigma(\theta_{k-1} - s),
 \end{equation}
 with $\theta_0=-\infty$ and $\theta_5=+\infty$. We enforce monotonicity by the
-softplus reparameterisation $\theta_k=\theta_1+\sum_{j=1}^{k-1}\mathrm{softplus}(\delta_j)$,
-which guarantees $\theta_k<\theta_{k+1}$ for any unconstrained $(\theta_1,\delta_1,\dots,\delta_{K-2})$.
-This trick has been used in deep ordinal classification~\cite{vargas2020clm,cao2020coral}.
+softplus reparameterisation
+\begin{equation}
+\label{eq:softplus}
+\theta_k=\theta_1+\sum_{j=1}^{k-1}\mathrm{softplus}(\delta_j),
+\end{equation}
+which guarantees $\theta_k<\theta_{k+1}$ for any unconstrained
+$(\theta_1,\delta_1,\dots,\delta_{K-2})$. This trick has been used in deep
+ordinal classification~\cite{vargas2020clm,cao2020coral}.
 We use the logit link in (\ref{eq:cum}); replacing the logistic CDF with
 the normal CDF (probit, as in OPRFM~\cite{zaman2025oprfm}) shifts headline
 RMSE by $-0.0009$ and NLL by $+0.005$ across the five splits, both within
 between-split standard deviation, so we treat the choice as a
 parameterisation detail rather than a methodological commitment.
 
-\paragraph{Quantile initialisation.}
+\paragraph{Empirical-quantile initialisation (the recipe).}
 Default zero initialisation (or a single $\theta_1=-2$) is poor: at $s=0$ the
 predicted marginal puts almost all mass on the lowest class, and the model
 spends several epochs warming up. We instead initialise from the empirical
-rating distribution. Let $\hat p_k$ be the training-set frequency of rating $k$
-and $\hat F_k=\sum_{j\le k}\hat p_j$ its cumulative. Choosing
-$\theta_k=\mathrm{logit}(\hat F_k)$ guarantees $P(r\le k\mid s=0)=\hat F_k$, so
-the predicted marginal at the start of training equals the data marginal. We
-then invert the softplus to recover the unconstrained $\delta_j$ as
-$\delta_j=\log(\exp(\theta_{j+1}-\theta_j)-1)$. The ordinal-head parameters are
-excluded from weight decay; their scale carries calibration information that
-$L_2$ shrinkage destroys.
+rating distribution. Let $\hat p_k$ be the training-set frequency of rating
+$k$ and $\hat F_k=\sum_{j\le k}\hat p_j$ its cumulative. Choosing
+\begin{equation}
+\label{eq:quantile-init}
+\theta_k = \mathrm{logit}(\hat F_k),\qquad
+\delta_j = \log\!\bigl(\exp(\theta_{j+1}-\theta_j) - 1\bigr)
+\end{equation}
+guarantees $P(r{\le}k\mid s{=}0)=\hat F_k$, so the predicted marginal at the
+start of training equals the data marginal exactly. The second equation is
+just the softplus inverse, recovering the unconstrained $\delta_j$ that the
+optimiser then updates. Together with excluding $\{\theta_1,\delta_j\}$ from
+weight decay --- their scale carries calibration information that $L_2$
+shrinkage destroys --- this is the calibration recipe we propose. It is
+$\sim\!10$ lines of code, agnostic to the score $s$, and we use it on every
+ordinal cell in the experiments below.
 
 The training loss is the negative log-likelihood
 $\mathcal{L}_{\mathrm{ord}}=-\frac{1}{N}\sum_t \log P(r=r_t\mid s_{u_ti_t})$,
@@ -319,6 +351,39 @@ $\log 5\approx1.609$ uniform baseline; even the worst ordinal cell
 (\emph{additive}+ordinal, NLL $1.2654$) is calibrated. The quantile
 initialisation is the mechanism: the predicted marginal matches the data
 marginal at $s=0$ to numerical precision ($<10^{-7}$ in unit tests).
+
+\paragraph{Reliability diagram and per-class ECE.}
+NLL is a single number; Figure~\ref{fig:reliability} renders the
+underlying calibration curve directly. We compare the cumulative-link
+probabilities $P(r{=}k\mid s)$ of the gated$+$ordinal head against a
+Gaussian-kernel baseline that turns the gated$+$sigmoid point estimate
+$\hat y$ into a five-class distribution
+$P(r{=}k\mid \hat y)\propto\exp\!\bigl(-(k-\hat y)^2/2\sigma^2\bigr)$ with
+$\sigma{=}1$ (so the sigmoid head can be evaluated under the same
+calibration definition). On pooled ECE the two heads are close
+($0.0108$ kernelised sigmoid vs $0.0143$ ordinal), but the per-class
+breakdown is the more informative read: the ordinal head's ECE is lower
+on four of the five classes (class~1 $0.009$ vs $0.025$, class~2
+$0.012$ vs $0.036$, class~3 $0.019$ vs $0.034$, class~5 $0.026$ vs
+$0.036$), with the kernelised sigmoid winning only on the dominant
+class~4 ($0.009$ vs $0.025$). The pattern is the calibration version of
+the per-class F1 finding above: sigmoid$+$MSE concentrates probability
+mass on the dominant rating, which makes both its accuracy and its
+calibration look good there and worse everywhere else; the ordinal head
+spreads probability across the five classes more evenly.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\linewidth]{figures/reliability_curves.png}
+\caption{Reliability diagrams on \texttt{u1.test} for the gated backbone
+under each head. Predicted probability is bucketed into 10 bins and
+plotted against observed empirical frequency; perfect calibration sits
+on the diagonal. The faint per-class lines reveal the structure of the
+calibration error that pooled ECE conceals: gated$+$ordinal is better
+calibrated on classes 1, 2, 3, and 5; gated$+$sigmoid (Gaussian
+kernelised) wins only on the dominant class~4.}
+\label{fig:reliability}
+\end{figure}
 
 \paragraph{Where the ordinal head wins: extreme classes.}
 The aggregate accuracy and NLL numbers conceal a sharper mechanistic claim.
@@ -614,13 +679,18 @@ rating-class marginal but does not model per-user heteroscedasticity.
 
 \section{Conclusion}
 \label{sec:conclusion}
-We presented an integration of two well-studied components --- gated
-auxiliary fusion and a cumulative-link ordinal head with quantile-initialised
-thresholds --- on a transparent matrix-factorisation backbone for MovieLens
-rating prediction. The combination yields RMSE $0.9124\pm0.0036$ and NLL
-$1.2584$ across the five canonical MovieLens-100K splits under val-driven
-early stopping, dominating both an MF baseline and an
-additive-fusion variant on every metric we measure. The ablation isolates
+We presented a calibration recipe for cumulative-link collaborative
+filtering: initialise the monotone thresholds from the training-set rating
+quantiles, parameterise their spacing through a softplus-inverse, and
+exclude them from $L_2$ regularisation. The recipe is implementation-level
+($\sim$10 lines of code, agnostic to the score function), and it produces
+a head whose predicted marginal matches the data marginal at training start
+to numerical precision and whose calibrated NLL holds throughout training.
+Paired with a per-dimension symmetric gated fusion of side information,
+the resulting model attains RMSE $0.9124\pm0.0036$ and NLL $1.2584$ across
+the five canonical MovieLens-100K splits under val-driven early stopping,
+dominating both an MF baseline and an additive-fusion variant on every
+metric we measure. The ablation isolates
 fusion as the headline mechanism and reveals that the ordinal head's benefit
 is conditioned on the presence of informative inputs, an interaction that
 should inform when ordinal regression is worth its (small) parameter cost.
@@ -672,6 +742,7 @@ Cold-start regime analysis (u1) & \texttt{run\_coldstart.py} & $\sim$2 min \\
 Per-class confusion / F1 (u1) & \texttt{run\_classmetrics.py} & $\sim$2 min \\
 Logit vs.\ probit link (5 splits) & \texttt{run\_link\_compare.py} & $\sim$10 min \\
 Per-dim gate analysis (u1) & \texttt{run\_gate\_analysis.py} & $\sim$1 min \\
+Reliability diagram + ECE (u1) & \texttt{run\_reliability.py} & $\sim$2 min \\
 MovieLens-1M scale-up (3 cells $\times$ 3 seeds) & \texttt{run\_ml1m.py} & $\sim$85 min \\
 \bottomrule
 \end{tabular}

@@ -1,0 +1,33 @@
+# Default configuration. Override via CLI or separate files for ablations.
+seed: 42
+device: cpu           # MPS is available on M1 but CPU is more reproducible here
+
+data_dir: data/ml-100k
+split: u1             # use u1.base / u1.test for head-to-head with published benchmarks
+
+embed_dim: 128
+svd_rank: 20
+
+# Training
+epochs: 30
+batch_size: 64
+lr: 1.0e-3
+weight_decay: 1.0e-5
+
+# Early stopping protocol.
+# - "headline"  (patience=30): disables early stopping, trains the full 30 epochs.
+#                Used for reported main-table numbers; follows the fixed 30-epoch baseline protocol.
+# - "ablation"  (patience=10): speeds up the 18-run ablation sweep in Week 3.
+# Expected headline vs ablation drift: within ±0.003 RMSE over 3 seeds (to be verified).
+protocol: headline    # {headline, ablation}
+patience_headline: 30
+patience_ablation: 10
+
+# Proposed model toggles (for ablation)
+fusion: gated         # {none, additive, gated}
+head: ordinal         # {sigmoid, ordinal}
+
+# Always-on companion ablation: same fusion=gated but with the sigmoid head.
+# Set false for single-model runs; true for headline reporting so the main table shows
+# that our fusion mechanism alone improves RMSE under the baseline output head.
+run_gated_sigmoid_ablation: true

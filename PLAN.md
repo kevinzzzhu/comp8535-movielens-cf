@@ -540,3 +540,22 @@ Findings:
 - Paper compiles cleanly to **11 pages** (no growth — section fits in existing layout).
 
 **Tier 2/3 closeout**: with this commit all six items from the 2026-04-27 strategic review are landed (per-dim gate ✓, logit-vs-probit ✓, ML-1M scale-up ✓, Reproducibility appendix ✓, Algorithm 1 pseudo-code ✓, page-trim deferred per user direction). Paper at 11 pages; final trim is the only Week 6 task left before submission.
+
+---
+
+### 2026-05-07 · Reframe + reliability diagram
+
+Two coupled changes intended to sharpen the novelty signal without adding new empirical claims:
+
+**(A) Reframe.** Rewrote the title, abstract, §1 contributions list, §3.3 method intro and §5 conclusion to centre the paper on a single named contribution: an **empirical-quantile calibration recipe for cumulative-link CF** (`θ_k = logit(F̂_k)` with the softplus-inverse for `δ_j` and exclusion of `{θ_1, δ_j}` from $L_2$). The gated fusion and IsoMap diagnostic are now framed as supporting components rather than co-equal contributions. New paper title: "Quantile-Initialised Ordinal Collaborative Filtering with Gated Auxiliary Fusion." The framing is honest about scope: implementation-level recipe, not a new algorithm. No empirical numbers changed; the dilution that came from listing four small contributions is replaced with one headline + two supports.
+
+**(B) Reliability diagram (`scripts/run_reliability.py`).** Visualises the calibration claim directly. Builds 5-class probability distributions for both the gated+ordinal head (native cumulative-link) and the gated+sigmoid head (Gaussian kernel with σ=1 around `ŷ`, normalised over classes), then bins the (predicted-prob, observed-indicator) pairs into 10 buckets and plots reliability + ECE. Findings:
+
+| Head | Pooled ECE | Per-class wins (5 classes) |
+|---|---|---|
+| gated+sigmoid (kernel σ=1) | 0.0108 | 1 (class 4 only) |
+| gated+ordinal (cumulative-link) | 0.0143 | **4 (classes 1, 2, 3, 5)** |
+
+Pooled ECE makes the two heads look comparable; per-class breakdown shows the structure of the calibration error. Sigmoid+MSE concentrates probability on the dominant class 4 (well-calibrated there, mis-calibrated elsewhere); the ordinal head spreads probability evenly across the five classes. This mirrors the per-class F1 finding from §4.4: same mechanism, same pattern, now visualised. The reliability figure was added to §4.4 as a "Reliability diagram and per-class ECE" paragraph.
+
+**Paper effect**: 11 pp → **12 pp** (added one figure + one paragraph; everything else is rewriting in place). Page-trim still deferred to a final Week 6 pass.
