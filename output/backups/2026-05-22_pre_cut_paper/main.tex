@@ -49,7 +49,9 @@ Collaborative filtering (CF) for explicit feedback is commonly framed as
 predicting an unobserved scalar rating $r_{ui}$ from a sparse user--item rating
 matrix $R\in\mathbb{R}^{n\times m}$~\cite{schafer2007cf}. Latent-factor models
 based on matrix factorisation~\cite{koren2009mf} remain standard baselines and
-building blocks on MovieLens~\cite{harper2015movielens}.
+building blocks on MovieLens~\cite{harper2015movielens}; later work includes neural
+hybrids~\cite{he2017ncf,wang2015cdl} and factorisation-machine
+variants~\cite{rendle2010fm,guo2017deepfm}.
 Two persistent issues remain when these models are applied as a course-style
 data-analytics tool rather than a production recommender. First, side
 information (user demographics, item genres) is typically injected by adding a
@@ -63,7 +65,8 @@ yet badly calibrated as distributions over star ratings.
 The shortcomings above have each been addressed in isolation. \emph{Gated
 fusion} of latent representations with content features has been explored by
 Ma~\emph{et al.}'s GATE~\cite{ma2019gate}, which uses a sigmoid gate to blend
-an item embedding with item content. \emph{Cumulative-link ordinal regression} for
+an item embedding with item content; gating is also implicit in attention-based
+factorisation~\cite{xiao2017afm}. \emph{Cumulative-link ordinal regression} for
 recommendation has a long history starting with McCullagh's classical
 formulation~\cite{mccullagh1980ordinal}, and was applied to MovieLens by Koren
 and Sill in OrdRec~\cite{koren2011ordrec,koren2013ordinalfeedback}. Two recent
@@ -71,11 +74,12 @@ papers operate in essentially the same setting as ours: OrdNMF~\cite{gouvert2020
 combines an ordinal head with non-negative matrix factorisation, and
 OPRFM~\cite{zaman2025oprfm} couples ordinal probit regression with factorisation
 machines on MovieLens-100K, 1M, and 10M. The cumulative-link parameterisation
-itself has seen renewed interest in deep ordinal classification~\cite{vargas2020clm}
+itself has seen renewed interest in deep ordinal classification~\cite{vargas2020clm,cao2020coral}
 and in ordinal random fields for recommenders~\cite{liu2014orf}. Less of this
 literature focuses on manifold visualisation of learned recommender embeddings;
-standard tools include PCA~\cite{jolliffe2002pca} and
-IsoMap~\cite{tenenbaum2000isomap}. Our contribution is therefore not the invention of
+standard tools include
+IsoMap~\cite{tenenbaum2000isomap}, t-SNE~\cite{maaten2008tsne}, and
+UMAP~\cite{mcinnes2018umap}. Our contribution is therefore not the invention of
 any single component, but their integration on a transparent linear core,
 together with a calibration recipe (empirical-quantile threshold
 initialisation) and a geometry diagnostic.
@@ -180,7 +184,7 @@ softplus reparameterisation
 \end{equation}
 which guarantees $\theta_k<\theta_{k+1}$ for any unconstrained
 $(\theta_1,\delta_1,\dots,\delta_{K-2})$. This trick has been used in deep
-ordinal classification~\cite{vargas2020clm}.
+ordinal classification~\cite{vargas2020clm,cao2020coral}.
 We use the logit link in (\ref{eq:cum}); replacing the logistic CDF with
 the normal CDF (probit, as in OPRFM~\cite{zaman2025oprfm}) shifts headline
 RMSE by $-0.0009$ and NLL by $+0.005$ across the five splits, both within
@@ -377,14 +381,64 @@ $\log 5\approx1.609$ uniform baseline; even the worst ordinal cell
 initialisation is the mechanism: the predicted marginal matches the data
 marginal at $s=0$ to numerical precision ($<10^{-7}$ in unit tests).
 
-\paragraph{Class-level behaviour.}
-On \texttt{u1.test}, the ordinal head improves macro-F1 from $0.341$ to
-$0.369$ on the same gated backbone, mostly by recovering boundary ratings
-(class-1 recall $0.169$ vs $0.102$, class-5 recall $0.235$ vs $0.204$).
-Per-class ECE shows the same pattern: the ordinal head is better on classes
-1, 2, 3, and 5, while the kernelised sigmoid head is better on the dominant
-class 4. This is why we treat the ordinal head as a probability/class-behaviour
-improvement rather than a large RMSE improvement.
+\paragraph{Reliability diagram and per-class ECE.}
+NLL is a single number; Figure~\ref{fig:reliability} renders the
+underlying calibration curve directly. We compare the cumulative-link
+probabilities $P(r{=}k\mid s)$ of the gated$+$ordinal head against a
+Gaussian-kernel baseline that turns the gated$+$sigmoid point estimate
+$\hat y$ into a five-class distribution
+$P(r{=}k\mid \hat y)\propto\exp\!\bigl(-(k-\hat y)^2/2\sigma^2\bigr)$ with
+$\sigma{=}1$ (so the sigmoid head can be evaluated under the same
+calibration definition). On pooled ECE the two heads are close
+($0.0108$ kernelised sigmoid vs $0.0143$ ordinal), but the per-class
+breakdown is the more informative read: the ordinal head's ECE is lower
+on four of the five classes (class~1 $0.009$ vs $0.025$, class~2
+$0.012$ vs $0.036$, class~3 $0.019$ vs $0.034$, class~5 $0.026$ vs
+$0.036$), with the kernelised sigmoid winning only on the dominant
+class~4 ($0.009$ vs $0.025$). The pattern is the calibration version of
+the per-class F1 finding above: sigmoid$+$MSE concentrates probability
+mass on the dominant rating, which makes both its accuracy and its
+calibration look good there and worse everywhere else; the ordinal head
+spreads probability across the five classes more evenly.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\linewidth]{figures/reliability_curves.png}
+\caption{Reliability diagrams on \texttt{u1.test} for the gated backbone
+under each head. Predicted probability is bucketed into 10 bins and
+plotted against observed empirical frequency; perfect calibration sits
+on the diagonal. The faint per-class lines reveal the structure of the
+calibration error that pooled ECE conceals: gated$+$ordinal is better
+calibrated on classes 1, 2, 3, and 5; gated$+$sigmoid (Gaussian
+kernelised) wins only on the dominant class~4.}
+\label{fig:reliability}
+\end{figure}
+
+\paragraph{Where the ordinal head wins: extreme classes.}
+The aggregate accuracy and NLL numbers conceal a sharper mechanistic claim.
+Figure~\ref{fig:per_class_f1} reports per-class F1 on \texttt{u1.test} for
+the gated$+$sigmoid and gated$+$ordinal heads on the same backbone. The
+ordinal head wins on the boundary classes: $+0.098$ F1 on class~1
+(a $54\%$ relative improvement) and $+0.035$ F1 on class~5; classes
+2--4 are within $\pm 0.015$ of each other. Macro-F1 lifts from $0.341$
+(sigmoid) to $0.369$ (ordinal), a $+8\%$ relative gain driven almost
+entirely by recall on classes 1 and 5 (class-1 recall $0.169$ vs $0.102$;
+class-5 recall $0.235$ vs $0.204$). The sigmoid head trained with MSE
+biases predictions toward the middle of the rating range; the
+cumulative-link parameterisation explicitly carries thresholds for each
+class boundary, and uses them to recover ratings the sigmoid head rounds
+back into class~3 or class~4. This is the per-class footprint of the
+calibration claim, not just an aggregate.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.66\linewidth]{figures/per_class_f1.png}
+\caption{Per-class F1 on \texttt{u1.test} for the same gated backbone with
+sigmoid vs.\ ordinal heads. The ordinal head wins on the extreme classes
+(1 and 5) where the cumulative-link thresholds carry boundary information;
+classes 2--4 are within seed-level noise.}
+\label{fig:per_class_f1}
+\end{figure}
 
 Figure~\ref{fig:sens} shows the sensitivity sweep over the embedding dimension
 $d$ and the weight-decay coefficient $\lambda$, with all other settings held
@@ -474,10 +528,30 @@ linear directions.
 \label{sec:coldstart}
 
 \paragraph{Per-user trajectory.}
-We also stratify test predictions by user training activity $|R_u|$ to check
-whether gating helps uniformly. Table~\ref{tab:coldstart} compares
-gated$+$ordinal against additive$+$ordinal and records the average gate value
-in each activity bucket.
+A standard intuition for a learned gate is that it should \emph{close} as the
+ID embedding accumulates training signal --- a power user with hundreds of
+observed ratings should rely on the ID embedding alone, while a cold user with
+a handful of ratings should rely on the side-feature projection. We test this
+by stratifying every test prediction by the corresponding user's training
+activity $|R_u|$ into five activity buckets, and measuring the per-bucket mean
+gate value and per-bucket RMSE for both the gated$+$ordinal and
+additive$+$ordinal models (Figure~\ref{fig:coldstart},
+Table~\ref{tab:coldstart}). The activity buckets contain $\{189, 108, 89, 59,
+14\}$ users covering $\{2717, 3441, 5846, 6350, 1646\}$ test ratings.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.49\linewidth]{figures/gate_vs_users.png}\hfill
+\includegraphics[width=0.49\linewidth]{figures/rmse_vs_users.png}
+\caption{Per-bucket cold-start analysis. Left: mean per-prediction gate
+value across user-activity buckets. The user gate $g_u$ rises modestly with
+$|R_u|$ from $\approx\!0.25$ to $\approx\!0.29$, while $g_i$ stays essentially
+flat near $0.32$; both remain well below the zero-init value of $0.5$. Right:
+test RMSE by user-activity bucket for the two fusion variants. Gated fusion's
+advantage peaks in the mid-tail and flips sign on the power-user tail, where
+additive narrowly wins.}
+\label{fig:coldstart}
+\end{figure}
 
 \begin{table}[ht]
 \centering
@@ -497,11 +571,74 @@ mean $g_i$ & $0.316$ & $0.317$ & $0.316$ & $0.317$ & $0.316$ \\
 \end{tabular}
 \end{table}
 
-The advantage is not uniform: gated fusion is strongest in the mid-activity
-buckets, ties the coldest bucket, and reverses sign for the 14 power users.
-The user gate also opens slightly with activity ($0.246$ to $0.291$), while
-the item gate stays flat. We therefore read the aggregate gated-fusion gain as
-mainly a mid-tail effect rather than a universal cold-start improvement.
+The data do not support the naive intuition in this setting. First,
+$g_u$ moves modestly with $|R_u|$, increasing from $0.246$ on the cold tail
+to $0.291$ on power users (an $18\%$ rise), while $g_i$ stays essentially
+constant at $0.316$--$0.317$. The user gate \emph{opens} as the user
+accumulates ratings --- the opposite of the naive ``gate closes with data''
+intuition. Both gates remain well below the zero-init value of $0.5$, so the
+ID-embedding pathway has larger weight throughout, but the relative weight given to
+the side-feature projection grows on the user side as more training signal
+becomes available. Second, the gated$+$ordinal advantage over additive$+$ordinal
+peaks in the mid-activity bucket ($30$--$59$ ratings, $\Delta=+0.012$ RMSE),
+shrinks monotonically through the middle of the population, ties on the cold
+tail (${<}30$ ratings, $\Delta=+0.0004$, within seed variance), and
+\emph{flips sign} on the power-user tail ($\ge\!240$ ratings, $\Delta=-0.007$,
+i.e.\ additive narrowly wins). For users with hundreds of training ratings,
+the ID embedding already carries enough signal that mixing in the side-info
+projection through the gate appears to introduce variance without added
+information --- and the gate's continued opening at the high-activity end of
+the population may be part of why. We read this as evidence that learned
+gating is not uniformly beneficial across user-activity regimes in this
+linear-core CF setting. This complements
+related gated and probabilistic recommender work
+(GATE~\cite{ma2019gate}, OPRFM~\cite{zaman2025oprfm}) by showing that
+aggregate gains should not automatically be read as uniform across user
+activity regimes. The practical implication is that gated fusion is most
+valuable on mid-tail users; for the power-user tail, an additive (or
+no-fusion) variant may be preferable, though this needs confirmation beyond
+the single \texttt{u1} cold-start analysis.
+
+\subsection{Per-dimension gate interpretability}
+\label{sec:gate_perdim}
+Aggregate gate values disguise a striking per-dimension pattern. For each of
+the $d{=}128$ embedding dimensions of the trained gated$+$ordinal model
+(\texttt{u1}, seed $42$), Figure~\ref{fig:gate_perdim} sorts dimensions by
+their population-mean gate value and shades $\pm 1$ standard deviation around
+the mean. The user-side gate $g_u$ spans $[0.002, 0.984]$ across dimensions
+with population-mean $0.263$; the item-side gate $g_i$ spans $[0.002, 0.992]$
+with population-mean $0.317$. Only $20.3\%$ of user-side dimensions and
+$21.9\%$ of item-side dimensions sit above the zero-init value of $0.5$. The
+distribution is therefore strongly bimodal: most dimensions \emph{specialise}
+to the ID-embedding pathway (gate near zero) while a smaller subset
+specialises to the side-information projection (gate near one). The fusion
+mechanism is dividing labour across dimensions rather than averaging the two
+sources.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\linewidth]{figures/gate_distribution.png}
+\caption{Per-dimension gate distribution on \texttt{u1.test}, sorted by mean.
+The shaded band is $\pm 1$ std across the test population. Both sides exhibit
+a long left tail of fully closed dimensions (gate $\to 0$, ID embedding only)
+and a right tail of fully open dimensions (gate $\to 1$, side-info projection
+only); the fusion mechanism specialises rather than averages.}
+\label{fig:gate_perdim}
+\end{figure}
+
+\paragraph{Is the gate's choice population-wide or category-conditional?}
+We stratify the per-prediction gate by the user's occupation (top six
+categories) and by the item's dominant genre (top six), then compute the
+pairwise Spearman rank correlation between the per-dimension orderings of any
+two strata. For occupations the mean rank correlation is $0.96$; for genres
+it is $0.91$. Two strata picking similar dimensions to open implies the gate
+is making a population-wide decision rather than conditioning on the
+categorical side information. So while the \emph{fused output} of course
+depends on the user's and item's features (the side-information vector is
+plumbed into both the projection and the gate input), the
+\emph{per-dimension partition} between ID-driven and side-info-driven
+dimensions is a population-level architectural choice that emerges from
+training.
 
 \subsection{Scale-up to MovieLens-1M}
 \label{sec:ml1m}
@@ -509,8 +646,14 @@ To check whether the proposed integration remains competitive on a $10{\times}$
 larger benchmark, we run the three most informative cells --- the no-fusion
 baseline (\emph{none}+sigmoid), gated fusion alone (\emph{gated}+sigmoid),
 and the proposed gated$+$ordinal --- on MovieLens-1M~\cite{harper2015movielens}
-($1{,}000{,}209$ ratings) using a deterministic random $80/10/10$ split and
-the same three training seeds.
+($1{,}000{,}209$ ratings, $6{,}040$ users, $3{,}706$ rated items; $d_u=30$
+from gender, 7-bucket age and 21-class occupation; $d_i=18$ from a multi-hot
+genre vocabulary derived from the data). MovieLens-1M does not ship
+canonical CV splits, so we use a deterministic random $80/10/10$
+train/val/test partition keyed by a fixed split seed; all other settings
+(Adam, $d=128$, $\lambda=10^{-5}$, ablation patience $10$) match the
+MovieLens-100K experiments. Each cell is averaged over the same three
+training seeds.
 
 \begin{table}[ht]
 \centering
@@ -532,10 +675,21 @@ gated     & sigmoid & $0.8502\pm0.0003$ & $0.6695\pm0.0001$ & $0.4579\pm0.0002$ 
 }
 \end{table}
 
-The ordering matches the MovieLens-100K result: gated fusion improves on the
-no-fusion baseline, and the ordinal head adds a smaller further gain while
-providing NLL. The tighter seed variance is consistent with the larger
-training set stabilising the gate.
+Two observations are worth flagging. First, the ordering of the three tested cells
+matches the MovieLens-100K result (Table~\ref{tab:ablation}): gated
+fusion lifts RMSE over no-fusion by $0.0086$ (vs $0.0025$ on 100K), and
+adding the ordinal head on top contributes a further $0.0021$ (vs $0.0011$
+on 100K, also within seed noise). The integration story carries unchanged
+to the larger benchmark, with the fusion's contribution roughly tripling
+in absolute magnitude. Second, the absolute RMSE drops by $\sim\!0.064$
+between the two datasets ($0.9124$ on the five-split 100K mean to $0.8481$
+on 1M); the gated$+$ordinal cell produces an ordinal NLL of $1.184$,
+substantially below the corresponding $\log 5$ uniform baseline. Seed
+variance is roughly $5{\times}$ tighter on 1M ($\text{std}{\approx}10^{-3}$
+versus $\sim\!4\times10^{-3}$ on 100K), consistent with the larger
+training set's stabilising effect on the gate. Per-cell wall time scaled
+roughly linearly: a single ablation-protocol gated$+$ordinal run takes
+$\sim\!12$ minutes on M1 Pro CPU compared to $\sim\!50$ seconds on 100K.
 
 \subsection{Discussion}
 The ablation paints a sharper picture than the headline number alone. The
@@ -590,12 +744,59 @@ ordering and substantially tighter variance: gated$+$ordinal
 attains RMSE $0.8481\pm0.0006$ and NLL $1.1842$, the no-fusion baseline
 $0.8567\pm0.0008$.
 
-\paragraph{Contribution statement.}
-Kevin Zhu completed the implementation, experiments, analysis, and writing.
-All reported numbers trace to archived JSON/CSV outputs in the repository and
-can be regenerated from the corresponding scripts.
-
 \bibliographystyle{plain}
 \bibliography{refs}
+
+\appendix
+\section{Reproducibility}
+\label{sec:repro}
+All experiments run on a 14-inch MacBook Pro M1~Pro CPU (no GPU) under
+Python 3.11 with PyTorch 2.11 (CPU build), NumPy 2.4, scikit-learn 1.8 and
+matplotlib 3.10. The code is structured as a small, dependency-light
+package; the entire test suite (six unit tests covering gate shape,
+zero-init invariant, ordinal probability normalisation, threshold
+monotonicity, NMF non-negativity projection, and end-to-end
+forward/backward) runs in $\sim\!2$~s. Every reported headline number
+traces to a JSON dump in the repository archive.
+
+\begin{table}[ht]
+\centering
+\caption{Reproducibility commands. All scripts are deterministic given
+the listed seeds; \texttt{val\_seed}$=0$ is fixed across the project.}
+\label{tab:repro}
+\begin{tabular}{lll}
+\toprule
+Result & Command & Wall time \\
+\midrule
+6-cell ablation, u1, 3 seeds & \texttt{run\_ablations.py} & $\sim$10 min \\
+Sensitivity sweep ($d$, $\lambda$), 3 seeds & \texttt{run\_sensitivity.py} & $\sim$15 min \\
+5-split CV, 6 cells, 3 seeds (90 runs) & \texttt{run\_multisplit.py} & $\sim$60 min \\
+Manifold visualisation (u1) & \texttt{run\_visualization.py} & $\sim$1 min \\
+Cold-start regime analysis (u1) & \texttt{run\_coldstart.py} & $\sim$2 min \\
+Per-class confusion / F1 (u1) & \texttt{run\_classmetrics.py} & $\sim$2 min \\
+Logit vs.\ probit link (5 splits) & \texttt{run\_link\_compare.py} & $\sim$10 min \\
+Per-dim gate analysis (u1) & \texttt{run\_gate\_analysis.py} & $\sim$1 min \\
+Reliability diagram + ECE (u1) & \texttt{run\_reliability.py} & $\sim$2 min \\
+MovieLens-1M scale-up (3 cells $\times$ 3 seeds) & \texttt{run\_ml1m.py} & $\sim$85 min \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Seeds: training-seed set $\{42, 43, 44\}$; val-split seed $0$ (independent
+of training). Optimiser Adam~\cite{kingma2014adam} with learning rate
+$10^{-3}$ and weight decay $\lambda=10^{-5}$; ordinal-head thresholds
+excluded from weight decay. Patience$=10$ for the ablation protocol and
+$30$ for the headline protocol. Embedding dimension $d=128$, batch size
+$64$, max $30$ epochs. NMF baseline uses projected gradient descent on
+the factor matrices (clamping to $\ge 0$ after each Adam step), with
+biases unconstrained.
+
+\section{Software}
+The repository includes a single \texttt{uv} lockfile, the deterministic
+dataset loader, all experiment scripts, the six-test \texttt{pytest} suite,
+and a per-result JSON archive that
+includes the configuration snapshot used to produce it. Every figure
+and number in this paper can be regenerated by running the corresponding
+script in Table~\ref{tab:repro}.
 
 \end{document}
