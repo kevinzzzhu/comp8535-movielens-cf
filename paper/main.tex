@@ -27,29 +27,29 @@ transparent dot-product matrix-factorisation backbone, achieves low
 test negative log-likelihood ($1.2584$ across the five canonical
 MovieLens-100K splits, vs the $\log 5{\approx}1.61$ uniform baseline)
 without sacrificing RMSE. The recipe is paired with a per-dimension
-symmetric gated fusion of side information --- a modest design choice
-that turns out to do most of the empirical work --- and a
+symmetric gated fusion of side information, which gives the largest
+RMSE change in our ablation, and a
 manifold-projection diagnostic that exposes item-side genre structure
 that linear projections miss (2-D IsoMap silhouette $+0.23$ vs $+0.05$
 under PCA). The combined gated$+$ordinal configuration attains RMSE
 $0.9124\pm0.0036$ across all five MovieLens-100K splits (beating the
 no-fusion baseline $0.9160$ and the additive-fusion variant $0.9189$
 on the across-split mean and on four of the five individual splits),
-with the same ordering preserved on a $10\!\times$-larger MovieLens-1M
+with the same within-paper ordering observed on a $10\!\times$-larger MovieLens-1M
 scale-up (RMSE $0.8481\pm0.0006$, NLL $1.184$). The contribution is
-implementation-level: the components are well established; the recipe
-makes their probabilistic output usable, with a small set of supporting
+practical rather than algorithmic: the components are standard; the recipe
+provides a calibrated probability output, with a small set of supporting
 diagnostics.
 \end{abstract}
 
 \section{Introduction}
 \label{sec:intro}
 
-Collaborative filtering (CF) for explicit feedback is canonically framed as
+Collaborative filtering (CF) for explicit feedback is commonly framed as
 predicting an unobserved scalar rating $r_{ui}$ from a sparse user--item rating
 matrix $R\in\mathbb{R}^{n\times m}$~\cite{schafer2007cf}. Latent-factor models
-based on matrix factorisation~\cite{koren2009mf} dominate the public benchmarks
-on MovieLens~\cite{harper2015movielens} and have evolved into neural
+based on matrix factorisation~\cite{koren2009mf} remain standard baselines and
+building blocks on MovieLens~\cite{harper2015movielens}; later work includes neural
 hybrids~\cite{he2017ncf,wang2015cdl} and factorisation-machine
 variants~\cite{rendle2010fm,guo2017deepfm}.
 Two persistent issues remain when these models are applied as a course-style
@@ -75,8 +75,9 @@ combines an ordinal head with non-negative matrix factorisation, and
 OPRFM~\cite{zaman2025oprfm} couples ordinal probit regression with factorisation
 machines on MovieLens-100K, 1M, and 10M. The cumulative-link parameterisation
 itself has seen renewed interest in deep ordinal classification~\cite{vargas2020clm,cao2020coral}
-and in ordinal random fields for recommenders~\cite{liu2014orf}. Manifold
-visualisation of learned recsys embeddings is rare; standard tools include
+and in ordinal random fields for recommenders~\cite{liu2014orf}. Less of this
+literature focuses on manifold visualisation of learned recommender embeddings;
+standard tools include
 IsoMap~\cite{tenenbaum2000isomap}, t-SNE~\cite{maaten2008tsne}, and
 UMAP~\cite{mcinnes2018umap}. Our contribution is therefore not the invention of
 any single component, but their integration on a transparent linear core,
@@ -97,8 +98,8 @@ precision and the ordinal NLL remains low throughout training.
 \item \emph{Supporting design choice.} A symmetric per-dimension gated
 fusion that blends ID embeddings with side-feature projections on
 both the user and the item sides, with zero-initialised gates so that
-training begins at the pre-fusion MF solution. Empirically this
-fusion does most of the RMSE work --- the ordinal head's contribution
+all dimensions start from the same neutral $0.5$ mixture. In our ablation this
+fusion accounts for the larger RMSE change --- the ordinal head's contribution
 is concentrated on calibration and per-class accuracy.
 \item \emph{Supporting diagnostic.} A manifold-projection lens (PCA, MDS,
 IsoMap) on the post-fusion embeddings, with silhouette scores
@@ -150,9 +151,9 @@ where $\Vert$ denotes concatenation and $\odot$ is the Hadamard product, so the
 gate $g_u\in[0,1]^d$ acts \emph{per dimension}. The item-side fusion is
 identical with $(q_i,a_i)$ in place of $(p_u,a_u)$. We zero-initialise both
 $W_g$ and $b_g$, which makes $g_u\equiv \tfrac12\mathbf{1}$ at training start.
-This anchors the optimiser at the equal-weight average of the pre-trained MF
-solution and the ReLU-projected side features --- the gate then opens and
-closes per dimension as gradient flows. As an ablation we also consider the
+This gives every dimension the same neutral starting mixture between the ID
+embedding and the ReLU-projected side features; the gate then opens and closes
+per dimension as gradient flows. As an ablation we also consider the
 \emph{additive} variant $p'_u = p_u + a_u$ and the \emph{none} variant
 $p'_u\equiv p_u$ (and similarly for items).
 
@@ -191,9 +192,9 @@ between-split standard deviation, so we treat the choice as a
 parameterisation detail rather than a methodological commitment.
 
 \paragraph{Empirical-quantile initialisation (the recipe).}
-Default zero initialisation (or a single $\theta_1=-2$) is poor: at $s=0$ the
-predicted marginal puts almost all mass on the lowest class, and the model
-spends several epochs warming up. We instead initialise from the empirical
+Default zero initialisation (or a fixed $\theta_1=-2$) does not match the
+training-set marginal and can start from a badly skewed class distribution.
+We instead initialise from the empirical
 rating distribution. Let $\hat p_k$ be the training-set frequency of rating
 $k$ and $\hat F_k=\sum_{j\le k}\hat p_j$ its cumulative. Choosing
 \begin{equation}
@@ -286,10 +287,35 @@ the rounded prediction, and (where the model exposes a class-probability head)
 the test NLL.
 
 \subsection{Results}
+Table~\ref{tab:baselines} first places the proposed model against the three
+transparent baselines on the \texttt{u1} split under the headline protocol
+(single training seed). The stronger evidence is the multi-split ablation in
+Table~\ref{tab:ablation}, but this baseline table makes explicit that the
+model is not only being compared to its own ablated variants.
+
+\begin{table}[ht]
+\centering
+\caption{Transparent baselines on MovieLens-100K \texttt{u1} under the headline
+protocol (seed $42$, patience $30$). The multi-split ablation in
+Table~\ref{tab:ablation} is the main comparison. Lower is better for
+RMSE/MAE/NLL, higher for Accuracy.}
+\label{tab:baselines}
+\begin{tabular}{lcccc}
+\toprule
+Model & RMSE & MAE & Accuracy & NLL \\
+\midrule
+SVD (rank 20) & $1.0834$ & $0.8896$ & $0.3716$ & --- \\
+Biased MF & $0.9221$ & $0.7274$ & $0.4124$ & --- \\
+NMF & $0.9197$ & $0.7252$ & $0.4146$ & --- \\
+Gated$+$ordinal & $\mathbf{0.9122}$ & $\mathbf{0.7130}$ & $\mathbf{0.4367}$ & $\mathbf{1.2472}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 The ablation matrix in Table~\ref{tab:ablation} reports the full
 $\{$none, additive, gated$\}\times\{$sigmoid, ordinal$\}$ cross-product on
-three seeds. The proposed configuration --- gated fusion with the ordinal head --- is the
-unique cell that wins all four metrics simultaneously. Across the five
+three seeds. The proposed configuration --- gated fusion with the ordinal head --- has the
+best mean value on all four reported metrics. Across the five
 splits it improves RMSE by $0.0036$ over the no-fusion baseline
 (\emph{none}+sigmoid, our analogue of plain MF) and by $0.0065$ over the
 additive-fusion variant under the sigmoid head. Replacing
@@ -297,6 +323,9 @@ only the head from sigmoid to ordinal on the same gated backbone gives
 $\Delta=+0.0011$ RMSE (within between-split std), and improves MAE by
 $0.0056$ and accuracy by $0.0087$. The ordinal cell is also the only one
 that emits a native class distribution (NLL $1.2584$).
+Because the RMSE differences are small relative to between-split variation, we
+interpret the main value of the ordinal head as probabilistic output and
+per-class behaviour rather than a large RMSE improvement.
 
 \begin{table}[ht]
 \centering
@@ -324,7 +353,7 @@ gated     & sigmoid & $0.9135\pm0.0037$ & $0.7182\pm0.0034$ & $0.4286\pm0.0054$ 
 \subsection{Ablation study}
 \label{sec:ablation}
 Table~\ref{tab:ablation} supports three claims.
-\paragraph{Gated fusion is the dominant contributor.}
+\paragraph{Gated fusion gives the larger RMSE change.}
 Holding the head fixed, replacing \emph{none} fusion with \emph{gated} drops
 RMSE by $0.0025$ (sigmoid) or $0.0046$ (ordinal); replacing \emph{additive}
 with \emph{gated} drops it by $0.0054$ (sigmoid) or $0.0050$ (ordinal).
@@ -332,12 +361,12 @@ Additive fusion is consistently the worst sigmoid-head cell --- on average
 slightly worse than no fusion at all ($0.9189$ vs $0.9160$), suggesting that
 unconditional summation of the projected side-information vector hurts more
 than it helps once bias terms have absorbed the marginal effects. Per-dimension
-gating recovers the would-be benefit and adds a real lift on top.
+gating is the only fusion choice that improves the mean RMSE in this ablation.
 \paragraph{The ordinal head buys native probabilities; its RMSE effect depends on fusion.}
 Switching the head from sigmoid to ordinal moves RMSE by $-0.0015$ on
 additive fusion, $-0.0011$ on gated fusion, and $+0.0010$ on no fusion. All
-three are within between-split std but the sign pattern is consistent across
-splits: ordinal helps only when the backbone has informative inputs to
+three are within between-split std. The sign pattern suggests that, in this
+experiment, ordinal prediction helps RMSE only when the backbone has informative inputs to
 discriminate across the five class boundaries; with no side information the
 predicted $P(r=k\mid s)$ collapses toward the marginal $\hat p_k$ and the
 ordinal NLL becomes a softer optimisation target than direct MSE on rounded
@@ -348,7 +377,7 @@ and it is the only native probabilistic head in the comparison.
 \paragraph{Ordinal NLL is low across all ordinal cells.}
 The proposed configuration achieves NLL $1.2584$, well below the
 $\log 5\approx1.609$ uniform baseline; even the worst ordinal cell
-(\emph{additive}+ordinal, NLL $1.2654$) remains close to that value. The quantile
+(\emph{additive}+ordinal, NLL $1.2654$) remains close to the proposed cell. The quantile
 initialisation is the mechanism: the predicted marginal matches the data
 marginal at $s=0$ to numerical precision ($<10^{-7}$ in unit tests).
 
@@ -486,7 +515,7 @@ genre (informative training signal) and the multi-hot nature of the genre
 features. Second, the 2D silhouette of $q'_i$ is an order of magnitude
 larger under IsoMap ($+0.232$) than under PCA ($+0.048$): the genre
 manifold is curved, and a linear projection collapses points from
-different genres on top of one another. This is precisely the diagnostic
+different genres on top of one another. This is the diagnostic
 that classical PCA-based recsys visualisations miss. By contrast, $p'_u$
 silhouette is strictly negative in 2D for all three methods: occupation
 structure exists in 128-D but is too high-dimensional to compress into a
@@ -542,13 +571,13 @@ mean $g_i$ & $0.316$ & $0.317$ & $0.316$ & $0.317$ & $0.316$ \\
 \end{tabular}
 \end{table}
 
-The data refute the naive intuition and produce a sharper finding. First,
+The data do not support the naive intuition in this setting. First,
 $g_u$ moves modestly with $|R_u|$, increasing from $0.246$ on the cold tail
 to $0.291$ on power users (an $18\%$ rise), while $g_i$ stays essentially
 constant at $0.316$--$0.317$. The user gate \emph{opens} as the user
 accumulates ratings --- the opposite of the naive ``gate closes with data''
 intuition. Both gates remain well below the zero-init value of $0.5$, so the
-ID-embedding pathway dominates throughout, but the relative weight given to
+ID-embedding pathway has larger weight throughout, but the relative weight given to
 the side-feature projection grows on the user side as more training signal
 becomes available. Second, the gated$+$ordinal advantage over additive$+$ordinal
 peaks in the mid-activity bucket ($30$--$59$ ratings, $\Delta=+0.012$ RMSE),
@@ -559,14 +588,16 @@ i.e.\ additive narrowly wins). For users with hundreds of training ratings,
 the ID embedding already carries enough signal that mixing in the side-info
 projection through the gate appears to introduce variance without added
 information --- and the gate's continued opening at the high-activity end of
-the population is plausibly part of why. We read this as a non-uniform regime
-of effectiveness for learned gating in linear-core CF. This complements
+the population may be part of why. We read this as evidence that learned
+gating is not uniformly beneficial across user-activity regimes in this
+linear-core CF setting. This complements
 related gated and probabilistic recommender work
 (GATE~\cite{ma2019gate}, OPRFM~\cite{zaman2025oprfm}) by showing that
 aggregate gains should not automatically be read as uniform across user
 activity regimes. The practical implication is that gated fusion is most
 valuable on mid-tail users; for the power-user tail, an additive (or
-no-fusion) variant is empirically a safer default.
+no-fusion) variant may be preferable, though this needs confirmation beyond
+the single \texttt{u1} cold-start analysis.
 
 \subsection{Per-dimension gate interpretability}
 \label{sec:gate_perdim}
@@ -611,7 +642,7 @@ training.
 
 \subsection{Scale-up to MovieLens-1M}
 \label{sec:ml1m}
-To check that the proposed integration continues to win on a $10{\times}$
+To check whether the proposed integration remains competitive on a $10{\times}$
 larger benchmark, we run the three most informative cells --- the no-fusion
 baseline (\emph{none}+sigmoid), gated fusion alone (\emph{gated}+sigmoid),
 and the proposed gated$+$ordinal --- on MovieLens-1M~\cite{harper2015movielens}
@@ -628,8 +659,8 @@ training seeds.
 \centering
 \caption{Scale-up to MovieLens-1M (random $80/10/10$ split, mean $\pm$ std
 over three seeds). Bold = best per column. The proposed configuration retains
-its dominance on a $10{\times}$ larger benchmark, with substantially tighter
-seed variance.}
+the best mean metrics among the three tested cells on a $10{\times}$ larger
+benchmark, with substantially tighter seed variance.}
 \label{tab:ml1m}
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{llcccc}
@@ -644,8 +675,8 @@ gated     & sigmoid & $0.8502\pm0.0003$ & $0.6695\pm0.0001$ & $0.4579\pm0.0002$ 
 }
 \end{table}
 
-Two observations are worth flagging. First, the ordering of the three cells
-is identical to the MovieLens-100K result (Table~\ref{tab:ablation}): gated
+Two observations are worth flagging. First, the ordering of the three tested cells
+matches the MovieLens-100K result (Table~\ref{tab:ablation}): gated
 fusion lifts RMSE over no-fusion by $0.0086$ (vs $0.0025$ on 100K), and
 adding the ordinal head on top contributes a further $0.0021$ (vs $0.0011$
 on 100K, also within seed noise). The integration story carries unchanged
@@ -662,17 +693,17 @@ $\sim\!12$ minutes on M1 Pro CPU compared to $\sim\!50$ seconds on 100K.
 
 \subsection{Discussion}
 The ablation paints a sharper picture than the headline number alone. The
-fusion mechanism does the bulk of the empirical work: gated fusion lifts RMSE
+fusion mechanism accounts for the larger part of the empirical RMSE change:
+gated fusion lifts RMSE
 on the across-split mean under both heads (and on four of the five
 individual splits; \texttt{u4} is the lone exception, where the gated
 configuration is within seed std of the no-fusion baseline). The ordinal head
 provides native probability estimates cheaply --- four learnable threshold
 parameters --- but does not help RMSE on its own; only when the backbone has
 informative inputs to discriminate against does the cumulative-link
-parameterisation pay off. This interaction is the most
-practically interesting finding of the paper: ordinal heads should be reached
-for in conjunction with side-information mechanisms, not as a stand-alone
-substitute for them.
+parameterisation pay off in our runs. This interaction suggests that ordinal
+heads are most useful here when paired with side-information mechanisms, not
+as a stand-alone substitute for them.
 
 \paragraph{Limitations.}
 The benchmark is small ($100$K ratings); the side information is limited to
@@ -695,7 +726,8 @@ improving the across-split mean over both an MF baseline and an
 additive-fusion variant on the main reported metrics. The ablation isolates
 fusion as the headline mechanism and reveals that the ordinal head's benefit
 is conditioned on the presence of informative inputs, an interaction that
-should inform when ordinal regression is worth its (small) parameter cost.
+matters when deciding whether ordinal regression is worth its small parameter
+cost.
 Manifold projections of the post-fusion embeddings show that item-side genre
 structure is curved and recovered cleanly by IsoMap but missed by PCA, while
 user-side occupation structure resides in too many dimensions to compress to
@@ -705,10 +737,10 @@ gate \emph{opens} modestly as users accumulate ratings (counter to the naive
 ``gate closes with data'' intuition), and that gated fusion's advantage over
 additive fusion is a mid-tail phenomenon: it ties on the cold tail and
 reverses sign on the power-user tail, suggesting that learned-gating
-mechanisms in linear-core CF should be paired with an additive or no-fusion
-fallback at the activity extremes. Repeating the three most informative
-cells on MovieLens-1M ($10\!\times$ larger, $1\,000\,209$ ratings) preserves
-the within-paper ordering and substantially tightens variance: gated$+$ordinal
+mechanisms in linear-core CF may need an additive or no-fusion fallback at the
+activity extremes. Repeating the three most informative cells on MovieLens-1M
+($10\!\times$ larger, $1\,000\,209$ ratings) gives the same within-paper
+ordering and substantially tighter variance: gated$+$ordinal
 attains RMSE $0.8481\pm0.0006$ and NLL $1.1842$, the no-fusion baseline
 $0.8567\pm0.0008$.
 
