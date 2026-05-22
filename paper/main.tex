@@ -509,6 +509,18 @@ judgements were developed independently by Kevin Zhu through reading and
 synthesising relevant papers on recommender systems, gated fusion, and ordinal
 regression.
 
+The idea came from connecting the course content with a problem I was already
+thinking about. COMP8535 repeatedly framed analytics as more than optimising a
+single metric: the lectures and tutorials emphasised validation, matrix methods,
+dimensionality reduction, and the need to match a model to the structure of the
+data being analysed. At the same time, another individual project of mine also
+used a five-star rating system. That made the MovieLens target feel less like a
+continuous number and more like an ordered user-interface signal. The project
+therefore became a way to ask whether collaborative filtering could keep the
+standard RMSE behaviour while also respecting the ordinal nature of star ratings,
+calibrating its predicted distribution, and using side information through a
+learned gate rather than a fixed additive rule.
+
 The coding process was assisted by Claude Code Opus 4.7 and Codex GPT 5.5 for
 implementation support, debugging, repository maintenance, and reproducibility
 checks. ChatGPT 5.5 Pro was used to refine wording and paper structure. Claude
