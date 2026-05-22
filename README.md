@@ -1,75 +1,164 @@
-# COMP8535 — MovieLens Collaborative Filtering
+---
+created: 2026-05-22
+last_edited: 2026-05-22
+tags: [comp8535, movielens, collaborative-filtering, reproducibility]
+---
 
-Group research project for ENGN/COMP8535 Engineering Data Analytics (ANU, Semester 1 2026).
+# Quantile-Initialised Ordinal Collaborative Filtering
 
-Proposed method: matrix factorisation with **gated auxiliary fusion** and a **cumulative-link ordinal regression head**, with **IsoMap** visualisation of learned embeddings. Evaluated on MovieLens-100K (`u1` split) against SVD, MF, and NMF baselines.
+This repository contains the source code for the paper:
 
-## Setup
+> Quantile-Initialised Ordinal Collaborative Filtering with Gated Auxiliary Fusion
+
+The code trains MovieLens collaborative-filtering baselines and the proposed
+matrix-factorisation model with gated auxiliary fusion and a cumulative-link
+ordinal head. It also regenerates the ablations, calibration plots, cold-start
+analysis, embedding visualisations, and MovieLens-1M scale-up used in the paper.
+
+## Repository Layout
+
+```text
+config/      Experiment configuration.
+paper/       LaTeX paper source and paper figures.
+scripts/     Reproduction scripts for each reported experiment.
+src/         Dataset loading, baselines, model, training, and visualisation code.
+tests/       Unit tests for model components.
+```
+
+The following paths are intentionally local-only and are ignored by Git:
+
+```text
+data/        Downloaded MovieLens datasets.
+results/     Generated experiment outputs.
+log/         Scratch run logs.
+output/      Local backups and draft artifacts.
+tmp/         Temporary files.
+```
+
+Planning notes, decision logs, literature-reading notes, and assistant-generated
+working files are also ignored so the repository remains a publishable source
+code artifact.
+
+## Environment
+
+The project uses Python 3.11+ and `uv`.
 
 ```bash
-uv sync                          # install pinned deps from uv.lock
-uv run python -m src.main        # run baselines + proposed
+uv sync --group dev
+PYTHONPATH=. uv run pytest
 ```
 
-Dataset lives under `data/ml-100k/` (checked in — ~4 MB; GroupLens license permits research use).
+The lockfile pins the Python dependencies used for the reported experiments.
+The default configuration runs on CPU for reproducibility.
 
-## Layout
+## Data
 
-```
-config/       YAML experiment configs
-data/         MovieLens-100K raw files
-src/          dataset.py, model.py, baselines.py, train.py, visualize.py, main.py
-log/          run outputs (json, checkpoints) — gitignored
-Fig/          figures for paper — gitignored
-paper/        NeurIPS-style report source
-tests/        (to add) unit tests for fusion / ordinal head
-scripts/      helper shell scripts
-```
-
-## Reproduction
-
-Hyperparameters (fixed for fair comparison with published benchmarks):
-- `d = 128`, Adam `lr=1e-3`, weight decay `1e-5`
-- batch 64, 30 epochs, early-stop patience 10 (ablation) / 30 (headline)
-- split: `u1.base` / `u1.test` (single split) or `u1`–`u5` (multi-split CV)
-- seeds: {42, 43, 44}; val-split seed 0 (independent of training seed)
-
-### Quick recipes
+MovieLens data is not committed because the GroupLens license does not permit
+redistribution without separate permission. Download the datasets locally before
+running the experiments.
 
 ```bash
-# 18-cell ablation matrix on u1                  ~10 min
-PYTHONPATH=. uv run python scripts/run_ablations.py
+mkdir -p data
 
-# Sensitivity sweep over d, lambda                ~15 min
-PYTHONPATH=. uv run python scripts/run_sensitivity.py
+# MovieLens-100K, required for all main experiments.
+curl -L -o /tmp/ml-100k.zip \
+  https://files.grouplens.org/datasets/movielens/ml-100k.zip
+unzip -q /tmp/ml-100k.zip -d data/
 
-# Full 5-split × 6 cells × 3 seeds = 90 runs      ~60 min
+# MovieLens-1M, required only for the scale-up experiment.
+curl -L -o /tmp/ml-1m.zip \
+  https://files.grouplens.org/datasets/movielens/ml-1m.zip
+unzip -q /tmp/ml-1m.zip -d data/
+```
+
+After extraction, the expected paths are `data/ml-100k/u1.base` and
+`data/ml-1m/ratings.dat`.
+
+## Reproducing the Paper
+
+All commands should be run from the repository root.
+
+```bash
+# Main single-split baselines and proposed model.
+PYTHONPATH=. uv run python -m src.main
+
+# MovieLens-100K five-split ablation matrix.
 PYTHONPATH=. uv run python scripts/run_multisplit.py
 
-# Manifold visualisation (PCA / MDS / IsoMap)     ~1 min
-PYTHONPATH=. uv run python scripts/run_visualization.py
+# Hyperparameter sensitivity curves.
+PYTHONPATH=. uv run python scripts/run_sensitivity.py
 
-# Cold-start / gate-trajectory analysis           ~2 min
-PYTHONPATH=. uv run python scripts/run_coldstart.py
+# Reliability diagrams and expected calibration error.
+PYTHONPATH=. uv run python scripts/run_reliability.py
 
-# Per-class confusion matrix and F1               ~2 min
+# Per-class F1 and confusion matrices.
 PYTHONPATH=. uv run python scripts/run_classmetrics.py
 
-# Logit vs probit cumulative-link comparison      ~10 min
+# Embedding visualisation with PCA, MDS, and IsoMap.
+PYTHONPATH=. uv run python scripts/run_visualization.py
+
+# Cold-start and gate-behaviour analysis.
+PYTHONPATH=. uv run python scripts/run_coldstart.py
+
+# Logit-vs-probit cumulative-link comparison.
 PYTHONPATH=. uv run python scripts/run_link_compare.py
 
-# Per-dimension gate distribution + stratification ~1 min
+# Per-dimension gate analysis.
 PYTHONPATH=. uv run python scripts/run_gate_analysis.py
 
-# MovieLens-1M scale-up (3 cells × 3 seeds)        ~75 min
-#  prerequisite: download ml-1m (24 MB) from grouplens.org
-curl -L -o /tmp/ml-1m.zip https://files.grouplens.org/datasets/movielens/ml-1m.zip
-unzip -q /tmp/ml-1m.zip -d data/
+# MovieLens-1M scale-up.
 PYTHONPATH=. uv run python scripts/run_ml1m.py
 ```
 
-## Ablations
+Generated outputs are written under timestamped directories in `results/`.
+Those outputs are deliberately ignored; rerun the scripts to regenerate them.
 
-Toggle `fusion ∈ {none, additive, gated}` and `head ∈ {sigmoid, ordinal}` in `config/config.yaml`. 2×3 = 6 cells.
+## Report Build
 
-For probit (instead of logit) cumulative link, pass `ordinal_link="probit"` to `CFGatedOrdinal`.
+The paper source is in `paper/main.tex`.
+
+```bash
+cd paper
+latexmk -pdf main.tex
+```
+
+The checked-in figures under `paper/figures/` are the paper-ready rendered
+figures. To replace them, regenerate the corresponding experiments and copy the
+new plots into `paper/figures/`.
+
+## Main Configuration
+
+Default hyperparameters live in `config/config.yaml`:
+
+```text
+embedding dimension: 128
+optimizer: Adam
+learning rate: 1e-3
+weight decay: 1e-5
+training seeds: 42, 43, 44
+MovieLens-100K splits: u1-u5
+```
+
+The main ablation crosses:
+
+```text
+fusion in {none, additive, gated}
+head in {sigmoid, ordinal}
+```
+
+## Citation
+
+If you use the datasets, cite the MovieLens dataset paper:
+
+```bibtex
+@article{harper2015movielens,
+  title = {The MovieLens Datasets: History and Context},
+  author = {Harper, F Maxwell and Konstan, Joseph A},
+  journal = {ACM Transactions on Interactive Intelligent Systems},
+  volume = {5},
+  number = {4},
+  pages = {1--19},
+  year = {2015},
+  doi = {10.1145/2827872}
+}
+```

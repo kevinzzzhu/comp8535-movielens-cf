@@ -1,24 +1,68 @@
+# Python
 __pycache__/
 *.py[cod]
 *.egg-info/
+.pytest_cache/
 .venv/
 .uv/
 .ipynb_checkpoints/
+
+# Local editor / OS state
 .DS_Store
-log/
-Fig/*.png
-Fig/*.pdf
-!Fig/.gitkeep
-*.pt
-*.ckpt
 .vscode/
 .idea/
 
-# MovieLens-1M dataset (24MB; pull from grouplens.org via repro instructions)
+# Local datasets. Download from GroupLens when reproducing.
+data/ml-100k/
 data/ml-1m/
-data/ml-1m.zip
+data/*.zip
+data/*.tar
+data/*.tar.gz
 
-# LaTeX build artefacts (keep main.pdf tracked, ignore intermediates)
+# Generated experiment outputs and scratch space
+log/
+results/
+output/
+tmp/
+*.pt
+*.pth
+*.ckpt
+
+# Personal planning, decision logs, literature notes, and assistant artifacts
+PLAN.md
+RESULTS.md
+LITERATURES_TO_READ.md
+DECISION*.md
+DECISIONS*.md
+decision*.md
+decisions*.md
+.claude/
+.codex/
+CLAUDE.md
+AGENTS.local.md
+assistant/
+assistant_notes/
+ai_assistant/
+chatgpt/
+codex_notes/
+
+# Previous drafts / group handoff material
+archive/
+archives/
+backup/
+backups/
+old/
+previous/
+previous_group/
+*_backup/
+*_backups/
+
+# Figure scratch directory
+Fig/*.png
+Fig/*.pdf
+!Fig/.gitkeep
+
+# LaTeX build artifacts. Keep paper source and checked-in figures only.
 paper/*.aux
 paper/*.log
 paper/*.out
@@ -28,3 +72,4 @@ paper/*.blg
 paper/*.fls
 paper/*.fdb_latexmk
 paper/*.synctex.gz
+paper/*.pdf
