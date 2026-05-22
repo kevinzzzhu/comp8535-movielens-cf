@@ -28,7 +28,7 @@ tmp/
 *.pth
 *.ckpt
 
-# Personal planning, decision logs, literature notes, and assistant artifacts
+# Personal planning, decision logs, literature notes, and local-only artifacts
 PLAN.md
 RESULTS.md
 LITERATURES_TO_READ.md
@@ -36,17 +36,9 @@ DECISION*.md
 DECISIONS*.md
 decision*.md
 decisions*.md
-.claude/
-.codex/
-CLAUDE.md
 AGENTS.local.md
-assistant/
-assistant_notes/
-ai_assistant/
-chatgpt/
-codex_notes/
 
-# Previous drafts / group handoff material
+# Previous drafts / handoff material
 archive/
 archives/
 backup/

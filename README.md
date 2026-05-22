@@ -35,9 +35,8 @@ output/      Local backups and draft artifacts.
 tmp/         Temporary files.
 ```
 
-Planning notes, decision logs, literature-reading notes, and assistant-generated
-working files are also ignored so the repository remains a publishable source
-code artifact.
+Planning notes, decision logs, literature-reading notes, and local working files
+are also ignored so the repository remains a publishable source code artifact.
 
 ## Environment
 
