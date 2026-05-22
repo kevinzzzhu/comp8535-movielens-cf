@@ -1,4 +1,4 @@
-\documentclass{article} % For LaTeX2e
+\documentclass[a4paper]{article} % For LaTeX2e
 \usepackage{nips15submit_e,times}
 \usepackage{hyperref}
 \usepackage{url}
@@ -7,6 +7,12 @@
 \usepackage{algpseudocode}
 
 % Course-required: use NIPS camera-ready format.
+% The bundled NIPS 2015 style defaults to US Letter, while the assignment
+% requires A4 pages.
+\setlength{\paperwidth}{210mm}
+\setlength{\paperheight}{297mm}
+\pdfpagewidth=\paperwidth
+\pdfpageheight=\paperheight
 \nipsfinalcopy
 
 \title{Quantile-Initialised Ordinal Collaborative Filtering\\ with Gated Auxiliary Fusion}
