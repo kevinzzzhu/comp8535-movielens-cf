@@ -89,8 +89,8 @@ predicted marginal matches the data marginal at $s=0$ to numerical precision.
 embeddings with side-feature projections on both sides, zero-initialised so
 all dimensions start at the neutral $0.5$ mixture; the larger RMSE change in
 our ablation comes from this component.
-\item Supporting diagnostic. A manifold-projection lens (PCA, MDS, IsoMap) on
-post-fusion embeddings with silhouettes stratified by occupation and dominant
+\item Supporting diagnostic. A manifold-projection lens (PCA, metric MDS, IsoMap) on
+post-fusion embeddings with silhouettes stratified by occupation and first-listed
 genre; IsoMap recovers item-side genre structure that linear projections miss
 ($+0.23$ vs $+0.05$).
 \end{enumerate}
@@ -367,8 +367,8 @@ $\pm0.015$; macro-F1 lifts from $0.341$ to $0.369$, driven by recall on 1 and 5.
 This is the per-class footprint of the calibration claim.
 
 Figure~\ref{fig:sensitivity} sweeps the two main hyperparameters. The
-$d$-curve has sharp diminishing returns at $d=128$: $d=256$ improves RMSE by
-only $\Delta=0.0024$ at $+34\%$ wall time, comparable to seed-to-seed variance
+$d$-curve shows only small gains beyond $d=128$: $d=256$ improves RMSE by
+$\Delta=0.0024$ at $+34\%$ wall time, comparable to seed-to-seed variance
 at $d=128$ ($0.0029$). The $\lambda$-curve is a clean U with the chosen
 $\lambda=10^{-5}$ at the optimum ($10^{-6}$ underregularises by $+0.0018$,
 $10^{-4}$ overregularises by $+0.0080$). Defaults were chosen a priori.

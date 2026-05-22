@@ -3,12 +3,12 @@
 Trains a single gated+ordinal model on u1.base, extracts post-fusion
 representations p'_u and q'_i (i.e. after passing through the gated fusion
 module, not the raw embeddings), projects them to 2D via three manifold methods,
-and reports silhouette scores stratified by occupation (users) and dominant
+and reports silhouette scores stratified by occupation (users) and first-listed
 genre (items).
 
 Outputs:
     results/<date>_viz/
-        manifold_grid.png       2x3 panel: rows = {users, items}, cols = {PCA, MDS, IsoMap}
+        manifold_grid.png       2x3 panel: rows = {users, items}, cols = {PCA, metric MDS, IsoMap}
         silhouette_scores.csv   per (entity, method) silhouette
         config_snapshot.yaml    config used
         results.json            metadata (seed, n_train_epochs, val_rmse, etc.)
@@ -61,17 +61,17 @@ def _load_user_occupations(data_dir: Path, n_users: int) -> tuple[np.ndarray, li
 
 
 def _load_item_genres(data_dir: Path, n_items: int) -> tuple[np.ndarray, list[str]]:
-    """Return per-item dominant genre as integer label."""
+    """Return per-item first-listed genre as integer label."""
     cols = ["item_id", "title", "release", "video_release", "imdb"] + GENRES
     df = pd.read_csv(data_dir / "u.item", sep="|", names=cols, encoding="latin-1")
     df = df.sort_values("item_id").reset_index(drop=True)
     genre_mat = df[GENRES].to_numpy(dtype=np.int64)
-    # Dominant genre = leftmost-set 1 in row; if all-zero, pick the first ("unknown").
-    dominant = np.argmax(genre_mat[:, 1:], axis=1) + 1  # skip "unknown" if anything else set
+    # First-listed genre = leftmost-set 1 in row; if all-zero, pick the first ("unknown").
+    first_listed = np.argmax(genre_mat[:, 1:], axis=1) + 1  # skip "unknown" if anything else set
     no_real_genre = genre_mat[:, 1:].sum(axis=1) == 0
-    dominant[no_real_genre] = 0  # "unknown"
+    first_listed[no_real_genre] = 0  # "unknown"
     labels = np.full(n_items, -1, dtype=np.int64)
-    labels[df["item_id"].to_numpy() - 1] = dominant
+    labels[df["item_id"].to_numpy() - 1] = first_listed
     return labels, GENRES
 
 
@@ -234,7 +234,7 @@ def main():
     cmap_u = plt.get_cmap("tab10")
     cmap_i = plt.get_cmap("tab10")
 
-    method_titles = {"pca": "PCA", "mds": "MDS", "isomap": "IsoMap"}
+    method_titles = {"pca": "PCA", "mds": "Metric MDS", "isomap": "IsoMap"}
     for col, m in enumerate(methods):
         Yp = user_proj[m]
         Yi = item_proj[m]
@@ -244,7 +244,7 @@ def main():
             if mask.sum() == 0: continue
             ax.scatter(Yp[mask, 0], Yp[mask, 1], s=18, alpha=0.78,
                        color=cmap_u(k), label=name)
-        ax.set_title(f"{method_titles[m]}: user embeddings $p'_u$ by occupation")
+        ax.set_title(f"{method_titles[m]}: users by occupation", fontsize=10)
         ax.set_xticks([]); ax.set_yticks([])
         if col == 0:
             ax.legend(fontsize=7, loc="best", ncol=2, framealpha=0.85)
@@ -255,7 +255,7 @@ def main():
             if mask.sum() == 0: continue
             ax.scatter(Yi[mask, 0], Yi[mask, 1], s=18, alpha=0.78,
                        color=cmap_i(k), label=name)
-        ax.set_title(f"{method_titles[m]}: item embeddings $q'_i$ by dominant genre")
+        ax.set_title(f"{method_titles[m]}: items by first-listed genre", fontsize=10)
         ax.set_xticks([]); ax.set_yticks([])
         if col == 0:
             ax.legend(fontsize=7, loc="best", ncol=2, framealpha=0.85)
